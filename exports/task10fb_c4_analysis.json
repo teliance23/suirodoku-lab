@@ -1,0 +1,90 @@
+{
+  "status": "done",
+  "source": "back_circulant",
+  "bias": "C4_transpose",
+  "n_mates_total": 14515200,
+  "is_exact": true,
+  "n_sample": 100000,
+  "n_orbits": 7,
+  "self_dual_count": 2,
+  "top_stab": 1296,
+  "stab_dist_structural": {
+    "8": 1,
+    "108": 2,
+    "648": 1,
+    "4": 1,
+    "324": 1,
+    "54": 1
+  },
+  "stab_dist_total": {
+    "8": 1,
+    "108": 2,
+    "1296": 1,
+    "4": 1,
+    "648": 1,
+    "54": 1
+  },
+  "orbits": [
+    {
+      "canon_hash": "9090766fc009c6fb12002f7a73095212",
+      "stab_structural": 648,
+      "stab_total": 1296,
+      "self_dual": true,
+      "sample_count": 2641,
+      "orbit_size": 5184
+    },
+    {
+      "canon_hash": "0e3e0fea1606ed11221ff3cd59d080eb",
+      "stab_structural": 324,
+      "stab_total": 648,
+      "self_dual": true,
+      "sample_count": 5005,
+      "orbit_size": 10368
+    },
+    {
+      "canon_hash": "029ab0490dd41a324737dd7f4de4950d",
+      "stab_structural": 108,
+      "stab_total": 108,
+      "self_dual": false,
+      "sample_count": 9936,
+      "orbit_size": 31104
+    },
+    {
+      "canon_hash": "b347911af30cbb7498c5b995a86c800c",
+      "stab_structural": 108,
+      "stab_total": 108,
+      "self_dual": false,
+      "sample_count": 10019,
+      "orbit_size": 31104
+    },
+    {
+      "canon_hash": "9a7ecb05d9d4fa6619ec4ef5f84691be",
+      "stab_structural": 54,
+      "stab_total": 54,
+      "self_dual": false,
+      "sample_count": 4927,
+      "orbit_size": 62208
+    },
+    {
+      "canon_hash": "375f14f82b40bda5ea40b1f0604d514c",
+      "stab_structural": 8,
+      "stab_total": 8,
+      "self_dual": false,
+      "sample_count": 22434,
+      "orbit_size": 419904
+    },
+    {
+      "canon_hash": "420b9734d24261ad05707f71d8d312fb",
+      "stab_structural": 4,
+      "stab_total": 4,
+      "self_dual": false,
+      "sample_count": 45038,
+      "orbit_size": 839808
+    }
+  ],
+  "elapsed": 19784.7,
+  "_meta": {
+    "task_id": "task10fb_c4_analysis",
+    "saved_at": "2026-02-21T23:30:04.992771"
+  }
+}
