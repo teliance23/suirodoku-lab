@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suirodoku Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17; --surface: #111827; --surface2: #1a2332; --border: #1e2d3d;
+    --text: #e2e8f0; --text2: #94a3b8; --accent: #22d3ee; --accent2: #06b6d4;
+    --green: #10b981; --orange: #f59e0b; --red: #ef4444; --purple: #a78bfa;
+    --mono: 'JetBrains Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-family: var(--mono); font-size: 1.8rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header p { color: var(--text2); font-size: 0.8rem; font-family: var(--mono); }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid var(--border); }
+  .tab { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; padding: 12px 28px;
+    cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .badge-count { background: var(--accent); color: var(--bg); font-size: 0.65rem;
+    padding: 1px 6px; border-radius: 10px; margin-left: 6px; font-weight: 700; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .task-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 24px; margin-bottom: 16px; }
+  .task-card.running { border-color: var(--accent); }
+  .task-card.done { border-color: var(--green); }
+  .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .task-id { font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .task-title { font-size: 1.05rem; font-weight: 600; margin-top: 2px; }
+  .task-status { font-family: var(--mono); font-size: 0.75rem; padding: 3px 10px; border-radius: 20px; }
+  .task-status.idle { background: #1e293b; color: #64748b; }
+  .task-status.running { background: rgba(34,211,238,0.15); color: var(--accent); }
+  .task-status.done { background: rgba(16,185,129,0.15); color: var(--green); }
+  .task-status.paused { background: rgba(245,158,11,0.15); color: var(--orange); }
+
+  .method-box { background: var(--surface2); border-radius: 6px; padding: 12px 16px; margin: 10px 0;
+    font-family: var(--mono); font-size: 0.72rem; line-height: 1.8; color: var(--text2); }
+  .method-box .formula { color: var(--purple); }
+  .mini-part { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; text-align: center; }
+  .mini-part.running { border-color: var(--accent); }
+  .mini-part.done { border-color: var(--green); }
+
+  .progress-bar-bg { width: 100%; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin: 8px 0 4px; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 3px; transition: width 0.5s; }
+  .progress-bar-fill.done { background: linear-gradient(90deg, #059669, var(--green)); }
+  .progress-stats { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.7rem; color: var(--text2); }
+
+  .result-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 18px; margin-top: 10px; font-family: var(--mono); font-size: 0.78rem; line-height: 1.8; }
+  .result-value { color: var(--green); font-weight: 700; font-size: 1.05rem; }
+  .result-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .result-row:last-child { border: none; }
+  .result-label { color: var(--text2); font-size: 0.72rem; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .btn { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; padding: 5px 14px;
+    border: 1px solid var(--border); border-radius: 5px; cursor: pointer; background: var(--surface2); color: var(--text); }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: var(--bg); border: none; font-weight: 600; }
+  .btn.stop { border-color: var(--red); color: var(--red); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+  .running-dot { display: inline-block; width: 6px; height: 6px; background: var(--accent);
+    border-radius: 50%; margin-right: 6px; animation: pulse 1.5s infinite; }
+
+  .grid-gallery { display: flex; flex-wrap: wrap; gap: 24px; }
+  .grid-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; flex: 0 0 auto; }
+  .grid-card h4 { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); margin-bottom: 8px; }
+
+  .suirodoku-grid { display: inline-grid; grid-template-columns: repeat(9, 38px); gap: 0; border: 2px solid #4a5568; }
+  .suirodoku-grid .cell {
+    width: 38px; height: 38px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-family: var(--mono);
+    border: 1px solid #2a3444;
+  }
+  .suirodoku-grid .cell .digit { font-size: 0.8rem; font-weight: 700; color: #1a1a2e; }
+  .suirodoku-grid .cell .color-label { font-size: 0.5rem; color: rgba(0,0,0,0.5); margin-top: -2px; }
+  .suirodoku-grid .cell.col-2, .suirodoku-grid .cell.col-5 { border-right: 2px solid #6b7280; }
+  .suirodoku-grid .cell.row-2, .suirodoku-grid .cell.row-5 { border-bottom: 2px solid #6b7280; }
+
+  .cell.color-R { background: #FF8A7A; } .cell.color-G { background: #5BD87A; }
+  .cell.color-B { background: #5DB2FF; } .cell.color-M { background: #FFA8CB; }
+  .cell.color-O { background: #FFBB45; } .cell.color-P { background: #C9A387; }
+  .cell.color-T { background: #64EAE6; } .cell.color-V { background: #BEA1E5; }
+  .cell.color-J { background: #FFEB6A; }
+
+  .grid-meta { font-family: var(--mono); font-size: 0.65rem; color: var(--text2); margin-top: 8px; line-height: 1.7; }
+  .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 0.6rem; font-family: var(--mono); margin-right: 3px; }
+  .badge.ok { background: rgba(16,185,129,0.2); color: var(--green); }
+
+  .grid-nav-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--text2); }
+  .grid-nav-bar button { font-size: 0.75rem; }
+  .no-grids { text-align: center; padding: 40px; color: var(--text2); font-family: var(--mono); }
+
+  .log-body { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; max-height: 70vh; overflow-y: auto; font-family: var(--mono); font-size: 0.7rem; line-height: 1.7; }
+  .log-entry { padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,0.02); }
+  .log-time { color: #475569; margin-right: 6px; }
+  .log-task { margin-right: 6px; font-weight: 600; }
+  .log-task.task1 { color: var(--purple); }
+  .log-task.task2 { color: var(--accent); }
+  .log-task.task3 { color: var(--orange); }
+  .log-task.task4 { color: #34d399; }
+  .log-task.task5 { color: #f472b6; }
+  .log-task.task6 { color: #fbbf24; }
+  .log-task.task7 { color: #f472b6; }
+  .log-task.task8 { color: #a78bfa; }
+  .log-task.task9 { color: #f97316; }
+  .log-task.task10 { color: #667eea; font-weight: 700; }
+  .log-task.task11 { color: #a78bfa; font-weight: 700; }
+  .log-task.task12 { color: #f472b6; font-weight: 700; }
+  .log-task.task13 { color: #06b6d4; font-weight: 700; }
+  .log-task.app { color: #94a3b8; font-weight: 700; }
+  .log-entry.success .log-msg { color: var(--green); }
+  .log-entry.math .log-msg { color: var(--purple); font-style: italic; }
+  .log-entry.warning .log-msg { color: var(--orange); }
+  .log-entry.error .log-msg { color: var(--red); }
+  .log-filter { display: flex; gap: 6px; margin-bottom: 12px; }
+  .log-filter button { font-family: var(--mono); font-size: 0.7rem; padding: 3px 10px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); cursor: pointer; }
+  .log-filter button.active { border-color: var(--accent); color: var(--accent); }
+
+  footer { text-align: center; margin-top: 32px; padding-top: 16px;
+    border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.65rem; color: #475569; }
+  #live-footer {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+    background: var(--bg-card); border-top: 1px solid var(--border);
+    padding: 6px 16px; font-size: 0.8rem; font-family: var(--mono);
+    color: var(--text-secondary); display: flex; align-items: center; gap: 12px;
+  }
+  #live-footer .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  #live-footer .dot.running { background:#34d399; animation: pulse 1s infinite; }
+  #live-footer .dot.idle { background:#666; }
+  body { padding-bottom: 36px; }
+
+  .probe-select {
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--surface2); color: var(--text); cursor: pointer;
+    appearance: auto; min-width: 180px;
+  }
+  .probe-select:hover { border-color: var(--accent); }
+  .probe-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(34,211,238,0.15); }
+  .probe-select option:disabled { color: #555; font-style: italic; }
+  .probe-info { font-family: var(--mono); font-size: 0.65rem; color: var(--text2);
+    margin: 4px 0 8px; padding: 4px 8px; background: rgba(34,211,238,0.05);
+    border-radius: 4px; border-left: 2px solid var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>SUIRODOKU LAB</h1>
+    <p>Computation Engine -- Tasks 01-07, 10, 12, 13</p>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('calculs', this)">Tasks</div>
+    <div class="tab" onclick="switchTab('grilles', this)">Grids Found <span class="badge-count" id="grid-tab-count">0</span></div>
+    <div class="tab" onclick="switchTab('journal', this)">Log</div>
+    <div class="tab" onclick="switchTab('perf', this)">Perf 📊</div>
+  </div>
+
+  <!-- TAB: TASKS -->
+  <div class="tab-content active" id="tab-calculs">
+
+    <!-- Task 1 -->
+    <div class="task-card" id="card-task1">
+      <div class="task-header">
+        <div><div class="task-id">Task 01</div><div class="task-title">Exact 4x4 Count</div></div>
+        <span class="task-status idle" id="status-task1">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Variables:</span> 16 digit + 16 color + 16 pair = 48 variables<br>
+        <span class="formula">Pair encoding:</span> pair[r][c] = digit[r][c] * 4 + color[r][c]<br>
+        <span class="formula">Constraints:</span> 12 AllDiff(digits) + 12 AllDiff(colors) + 1 AllDiff(pairs) + 16 linear<br>
+        Solver: OR-Tools CP-SAT, 1 thread, enumerate_all_solutions = true
+      </div>
+      <div id="progress-task1" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task1"></div></div>
+        <div class="progress-stats"><span id="s1l"></span><span id="s1r"></span></div>
+      </div>
+      <div class="result-box" id="result-task1" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-task1" onclick="startTask('task1')">Start</button>
+        <button class="btn" onclick="resetTask('task1')">Reset</button>
+      </div>
+    </div>
+
+    <!-- Task 2 -->
+    <div class="task-card" id="card-task2">
+      <div class="task-header">
+        <div><div class="task-id">Task 02</div><div class="task-title">Orbit Analysis 9x9</div></div>
+        <span class="task-status idle" id="status-task2">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Group:</span> G_struct = (S3)^3_rows * (S3)^3_cols * S3_bands * S3_stacks * C4_rotations<br>
+        <span class="formula">|G_struct| =</span> 216 * 216 * 6 * 6 * 2 = 3,359,232<br>
+        <span class="formula">G_full =</span> G_struct * S9(digits) * S9(colors), |G| = 3,359,232 * 362,880^2 ~ 4.42e17<br>
+        <span class="formula">Method:</span> Orbit-stabilizer theorem: |Orbit| = |G| / |Stab(grid)|
+      </div>
+      <div id="progress-task2" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task2"></div></div>
+        <div class="progress-stats"><span id="s2l"></span><span id="s2r"></span></div>
+      </div>
+      <div class="result-box" id="result-task2" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-task2" onclick="startTask('task2')">Start</button>
+        <button class="btn stop" id="btn-stop-task2" onclick="stopTask('task2')" disabled>Pause</button>
+        <button class="btn" onclick="resetTask('task2')">Reset</button>
+      </div>
+    </div>
+
+    <!-- Model Grid -->
+
+
+    <!-- Task 3 -->
+    <div class="task-card" id="card-task3">
+      <div class="task-header">
+        <div><div class="task-id">Task 03</div><div class="task-title">Search & Classify 9x9 Grids</div></div>
+        <span class="task-status idle" id="status-task3">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Variables:</span> 81 digit + 81 color + 81 pair = 243 variables<br>
+        <span class="formula">Pair encoding:</span> pair[r][c] = digit[r][c] * 9 + color[r][c] in {0,...,80}<br>
+        <span class="formula">Constraints:</span> 27 AllDiff(digits) + 27 AllDiff(colors) + 1 AllDiff(pairs) + 81 linear<br>
+        <span class="formula">Symmetry breaking:</span> first row fixed + row ordering in col 0 (eliminates 9!² × 144 symmetries)<br>
+        <span class="formula">Canonicalization:</span> inline via C library (3.35M transforms, ~0.2s/grid)<br>
+        <span class="formula">Swap:</span> d↔k applied to each grid for free orbit discovery<br>
+        Solver: OR-Tools CP-SAT, 8 threads, timeout 120s, random seed per attempt
+      </div>
+      <div id="progress-task3" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task3"></div></div>
+        <div class="progress-stats"><span id="s3l"></span><span id="s3r"></span></div>
+      </div>
+      <div class="result-box" id="result-task3" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-task3" onclick="startTask('task3')">Start</button>
+        <button class="btn stop" id="btn-stop-task3" onclick="stopTask('task3')" disabled>Pause</button>
+        <button class="btn" onclick="resetTask('task3')">Reset</button>
+        <button class="btn" onclick="exportGrids()">Export JSON</button>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.8rem">
+          Target: <input type="number" id="task3-target" value="5000" min="1" step="1000"
+            style="width:80px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;background:var(--bg-secondary);color:var(--text-primary)">
+          <button class="btn" onclick="setTask3Target()" style="padding:4px 10px;font-size:0.75rem">Apply</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- Task 4 -->
+
+    <!-- Task 5 -->
+    <div class="task-card" id="card-task5">
+      <div class="task-header">
+        <div><div class="task-id">Task 05</div><div class="task-title">Minimum Clue Suirodoku 4x4</div></div>
+        <span class="task-status idle" id="status-task5">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Question:</span> Minimum clues for a unique solution?<br>
+        <span class="formula">Variant 1:</span> Clue = full pair (digit+color) -- greedy removal (3 shuffles) on all 2,304 grids<br>
+        <span class="formula">Variant 2:</span> Clue = digit only / color only / pair -- heuristic degradation from V1<br>
+        <span class="formula">Comparison:</span> Sudoku 4x4 = 4 clues min -- Analog to McGuire (2014): 17 min for Sudoku 9x9
+      </div>
+      <div id="progress-task5" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task5"></div></div>
+        <div class="progress-stats"><span id="s5l"></span><span id="s5r"></span></div>
+      </div>
+      <div class="result-box" id="result-task5" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-task5" onclick="startTask('task5')">Start</button>
+        <button class="btn stop" id="btn-stop-task5" onclick="stopTask('task5')" disabled>Pause</button>
+        <button class="btn" onclick="resetTask('task5')">Reset</button>
+      </div>
+    </div>
+
+    <!-- Task 6 -->
+    <div class="task-card" id="card-task6">
+      <div class="task-header">
+        <div><div class="task-id">Task 06</div><div class="task-title">Color Mate Count</div></div>
+        <span class="task-status idle" id="status-task6">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Input:</span> Unique digit layers from Task 03 (deduplicated)<br>
+        <span class="formula">Method:</span> For each Sudoku: fix digits, enumerate compatible color layers via CP-SAT<br>
+        <span class="formula">Cap:</span> 10,000 solutions max, 60s timeout per Sudoku<br>
+        If most have 1 mate: constraint is extremely restrictive
+      </div>
+      <div id="progress-task6" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task6"></div></div>
+        <div class="progress-stats"><span id="s6l"></span><span id="s6r"></span></div>
+      </div>
+      <div class="result-box" id="result-task6" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-task6" onclick="startTask('task6')">Start</button>
+        <button class="btn stop" id="btn-stop-task6" onclick="stopTask('task6')" disabled>Pause</button>
+        <button class="btn" onclick="resetTask('task6')">Reset</button>
+      </div>
+    </div>
+
+    <div class="task-card" id="card-task7">
+      <div class="task-header">
+        <div><div class="task-id">Task 07</div><div class="task-title">Minimum Clue 9×9</div></div>
+        <span class="task-status idle" id="status-task7">--</span>
+      </div>
+      <div class="method-box">
+        <span class="formula">Input:</span> Orbit representatives from Task 03<br>
+        <span class="formula">Method:</span> Greedy removal + CP-SAT uniqueness — <b>16 workers parallèles</b><br>
+        <span class="formula">Variant A:</span> Each clue = full pair (digit + color)<br>
+        5 random shuffles per orbit, best result kept. Checkpoints every 60s, resumable.
+      </div>
+      <div id="task7-orbit-panel" style="display:none; margin:10px 0;">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+          <button class="btn" onclick="t7SelectAll()" style="font-size:0.7rem">Select all</button>
+          <button class="btn" onclick="t7SelectNone()" style="font-size:0.7rem">None</button>
+          <button class="btn" onclick="t7SelectByStab()" style="font-size:0.7rem">1 per |Stab|</button>
+          <span id="t7-sel-count" style="font-family:var(--mono); font-size:0.7rem; color:var(--text2); margin-left:auto;">0 selected</span>
+        </div>
+        <div style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:6px;">
+          <table style="width:100%; font-family:var(--mono); font-size:0.68rem; border-collapse:collapse;">
+            <thead style="position:sticky; top:0; background:var(--surface2);">
+              <tr style="color:var(--text2); border-bottom:1px solid var(--border);">
+                <th style="padding:4px 6px; width:30px;">✓</th>
+                <th style="text-align:left; padding:4px 6px;">#</th>
+                <th style="text-align:right; padding:4px 6px;">Grids</th>
+                <th style="text-align:right; padding:4px 6px;">|Stab|</th>
+                <th style="text-align:left; padding:4px 6px;">Symmetry</th>
+                <th style="text-align:right; padding:4px 6px;">Min clues</th>
+              </tr>
+            </thead>
+            <tbody id="t7-orbit-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="progress-task7" style="display:none">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-task7"></div></div>
+        <div class="progress-stats"><span id="s7l"></span><span id="s7r"></span></div>
+      </div>
+      <div class="result-box" id="result-task7" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-load-orbits7" onclick="loadTask7Orbits()">Load orbits</button>
+        <button class="btn primary" id="btn-start-task7" onclick="startTask7Selected()">Run selected</button>
+        <button class="btn stop" id="btn-stop-task7" onclick="stopTask('task7')" disabled>Pause</button>
+        <button class="btn" onclick="resetTask('task7')">Reset</button>
+      </div>
+    </div>
+
+
+    <!-- Task 9 -->
+
+
+    <!-- ============================================== -->
+    <!-- TASKS 10, 12, 13 — GENERATION + CATALOGUES     -->
+    <!-- ============================================== -->
+
+    <div style="margin: 20px 0 10px; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; font-weight: 600; font-size: 1rem;">
+      🔍 Tasks 10, 12, 13 — Recherche de grilles à haute symétrie
+      <div style="font-size: 0.8rem; font-weight: 400; opacity: 0.9; margin-top: 2px;">
+        Génération de mates + catalogues d'orbites indépendants. Chaque task a sa grille modèle.
+      </div>
+    </div>
+
+    <!-- Task 10 — Back-circulant: Generation + Catalogue -->
+    <div class="task-card" id="card-task10" style="border-color: #667eea;">
+      <div class="task-header">
+        <div><div class="task-id" style="color:#667eea">Task 10</div><div class="task-title">Grille modèle : back-circulant — Generation + Catalogue</div></div>
+      </div>
+      <div class="method-box">
+        <span class="formula">Grille modèle :</span> Back-circulant (Crystal Grid) — |Aut|=648, le plus symétrique connu<br>
+        <span class="formula">Phase 1:</span> 8 threads génération (CP-SAT) — avec sonde de symétrie configurable<br>
+        <span class="formula">Phase 2:</span> 8 threads catalogue — canonicalise, swap check, catalogue séparé par sonde
+      </div>
+
+      <!-- ─── Phase 1: Generation ─── -->
+      <div style="font-size:0.8rem; color:#667eea; font-weight:600; margin:10px 0 6px;">📥 Phase 1 — Génération mates (CP-SAT)</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+        <span style="font-family:var(--mono); font-size:0.72rem; color:var(--text2);">🔬 Sonde :</span>
+        <select id="t10-gen-probe" class="probe-select" onchange="onT10GenProbeChange()">
+          <option value="standard">Standard (aucune symétrie)</option>
+          <option value="r180">Rotation 180°</option>
+          <option value="order3">Ordre 3 (cycle colonnes)</option>
+          <option value="c3inv">C3 involution</option>
+          <option value="c4trans">C4 transposée</option>
+          <option value="s162inv">Stab162 involution</option>
+          <option value="s162o3">Stab162 ordre 3 (stacks)</option>
+        </select>
+      </div>
+      <div id="t10-gen-probe-info" class="probe-info">Énumération exhaustive sans contrainte de symétrie sur la couche couleur</div>
+
+      <div class="result-box" id="task10-gen" style="display:block; border-color:#667eea; margin-bottom:6px; padding:6px 10px;">
+        <div class="result-row"><span class="result-label">Grilles générées</span><span class="result-value" id="t10-found">0</span></div>
+        <div class="result-row"><span class="result-label">Sonde active</span><span id="t10-gen-active-probe" style="color:var(--accent);font-weight:600;font-size:0.78rem">standard</span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0">
+        <div class="mini-part" id="t10p1"><b>P1</b> <span class="task-status idle" id="status-task10_p1" style="font-size:11px">--</span><br><span id="t10p1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p1" onclick="stopTask10P(1)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(1)">↺</button></div></div>
+        <div class="mini-part" id="t10p2"><b>P2</b> <span class="task-status idle" id="status-task10_p2" style="font-size:11px">--</span><br><span id="t10p2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p2" onclick="stopTask10P(2)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(2)">↺</button></div></div>
+        <div class="mini-part" id="t10p3"><b>P3</b> <span class="task-status idle" id="status-task10_p3" style="font-size:11px">--</span><br><span id="t10p3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p3" onclick="stopTask10P(3)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(3)">↺</button></div></div>
+        <div class="mini-part" id="t10p4"><b>P4</b> <span class="task-status idle" id="status-task10_p4" style="font-size:11px">--</span><br><span id="t10p4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p4" onclick="stopTask10P(4)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(4)">↺</button></div></div>
+        <div class="mini-part" id="t10p5"><b>P5</b> <span class="task-status idle" id="status-task10_p5" style="font-size:11px">--</span><br><span id="t10p5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p5" onclick="stopTask10P(5)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(5)">↺</button></div></div>
+        <div class="mini-part" id="t10p6"><b>P6</b> <span class="task-status idle" id="status-task10_p6" style="font-size:11px">--</span><br><span id="t10p6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p6" onclick="stopTask10P(6)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(6)">↺</button></div></div>
+        <div class="mini-part" id="t10p7"><b>P7</b> <span class="task-status idle" id="status-task10_p7" style="font-size:11px">--</span><br><span id="t10p7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p7" onclick="stopTask10P(7)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(7)">↺</button></div></div>
+        <div class="mini-part" id="t10p8"><b>P8</b> <span class="task-status idle" id="status-task10_p8" style="font-size:11px">--</span><br><span id="t10p8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10P(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_p8" onclick="stopTask10P(8)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask10P(8)">↺</button></div></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn primary" onclick="startAllTask10P()">▶ Start All 8×2</button>
+        <button class="btn stop" onclick="stopAllTask10P()">⏸ Stop All</button>
+        <button class="btn" onclick="resetAllTask10P()">↺ Reset All</button>
+      </div>
+
+      <!-- ─── Phase 2: Catalog ─── -->
+      <div style="font-size:0.8rem; color:#667eea; font-weight:600; margin:6px 0;">📊 Phase 2 — Catalogue (canonicalisation + swap)</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+        <span style="font-family:var(--mono); font-size:0.72rem; color:var(--text2);">📂 Source :</span>
+        <select id="t10-cat-probe" class="probe-select" onchange="onT10CatProbeChange()">
+          <option value="standard">Standard — chargement...</option>
+        </select>
+        <button class="btn" style="padding:2px 8px;font-size:10px" onclick="refreshT10Probes()" title="Scanner les fichiers disponibles">🔄 Scan</button>
+      </div>
+      <div id="t10-cat-probe-info" class="probe-info" style="display:none;"></div>
+
+      <div class="result-box" id="task10-cat-recap" style="display:block; border-color:#667eea; margin-bottom:6px; padding:6px 10px;">
+        <div class="result-row"><span class="result-label">Orbites</span><span class="result-value" id="t10-n-orbits">0</span></div>
+        <div class="result-row"><span class="result-label">Self-dual</span><span id="t10-self-dual">0</span></div>
+        <div class="result-row"><span class="result-label">Top |Stab|</span><span id="t10-top-stab" style="color:var(--accent);font-weight:bold">0</span></div>
+        <div class="result-row"><span class="result-label">Grilles traitées</span><span id="t10-total-grids">0</span></div>
+        <div class="result-row" id="t10-stab-row" style="display:none"><span class="result-label">Stab distribution</span><span id="t10-stab-dist"></span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0">
+        <div class="mini-part" id="t10w1"><b>C1</b> <span class="task-status idle" id="status-task10_w1" style="font-size:11px">--</span><br><span id="t10w1f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w1" onclick="stopTask('task10_w1')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w1')">↺</button></div></div>
+        <div class="mini-part" id="t10w2"><b>C2</b> <span class="task-status idle" id="status-task10_w2" style="font-size:11px">--</span><br><span id="t10w2f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w2" onclick="stopTask('task10_w2')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w2')">↺</button></div></div>
+        <div class="mini-part" id="t10w3"><b>C3</b> <span class="task-status idle" id="status-task10_w3" style="font-size:11px">--</span><br><span id="t10w3f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w3" onclick="stopTask('task10_w3')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w3')">↺</button></div></div>
+        <div class="mini-part" id="t10w4"><b>C4</b> <span class="task-status idle" id="status-task10_w4" style="font-size:11px">--</span><br><span id="t10w4f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w4" onclick="stopTask('task10_w4')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w4')">↺</button></div></div>
+        <div class="mini-part" id="t10w5"><b>C5</b> <span class="task-status idle" id="status-task10_w5" style="font-size:11px">--</span><br><span id="t10w5f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w5" onclick="stopTask('task10_w5')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w5')">↺</button></div></div>
+        <div class="mini-part" id="t10w6"><b>C6</b> <span class="task-status idle" id="status-task10_w6" style="font-size:11px">--</span><br><span id="t10w6f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w6" onclick="stopTask('task10_w6')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w6')">↺</button></div></div>
+        <div class="mini-part" id="t10w7"><b>C7</b> <span class="task-status idle" id="status-task10_w7" style="font-size:11px">--</span><br><span id="t10w7f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w7" onclick="stopTask('task10_w7')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w7')">↺</button></div></div>
+        <div class="mini-part" id="t10w8"><b>C8</b> <span class="task-status idle" id="status-task10_w8" style="font-size:11px">--</span><br><span id="t10w8f" style="font-size:9px;color:#667eea;font-weight:600"></span><br><span id="t10w8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask10W(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task10_w8" onclick="stopTask('task10_w8')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task10_w8')">↺</button></div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="startAllTask10()">▶ Start Cat 8</button>
+        <button class="btn stop" onclick="stopAllTask10()">⏸ Stop Cat</button>
+        <button class="btn" onclick="resetAllTask10()">↺ Reset Cat</button>
+        <button class="btn" id="t10-export-btn" onclick="t10ExportCatalog()">Export JSON</button>
+      </div>
+    </div>
+
+    <!-- Task 11 — Unified Orbit Catalog (8 workers) -->
+    <div class="task-card" id="card-task11" style="border-color: var(--purple);">
+      <div class="task-header">
+        <div><div class="task-id" style="color:var(--purple)">Task 11</div><div class="task-title">Unified Orbit Catalog — 8 Workers</div></div>
+      </div>
+      <div class="method-box">
+        <span class="formula">Rôle:</span> Catalogue unifié — formes canoniques reconstituables (162 chars dc_canonical)<br>
+        <span class="formula">Sources:</span> 10a (r180) • 10E (C3) • 10F (C4) • 10G (ordre-3 ×16) • 10I (ancien ×16) • 10 (nouveau ×16)<br>
+        <span class="formula">Méthode:</span> 8 threads parallèles, canon C (GIL released), catalogue partagé thread-safe
+      </div>
+      <!-- Recap box -->
+      <div class="result-box" id="task11-recap" style="display:block; border-color:var(--purple); margin-bottom:10px;">
+        <div style="font-size:0.8rem; color:var(--purple); font-weight:600; margin-bottom:6px;">📊 Catalogue</div>
+        <div class="result-row"><span class="result-label">Orbites totales</span><span class="result-value" id="t11-n-orbits">0</span></div>
+        <div class="result-row"><span class="result-label">Self-dual</span><span id="t11-self-dual">0</span></div>
+        <div class="result-row"><span class="result-label">Top |Stab|</span><span id="t11-top-stab" style="color:var(--accent);font-weight:bold">0</span></div>
+        <div class="result-row"><span class="result-label">Sources traitées</span><span id="t11-sources">—</span></div>
+        <div class="result-row" id="t11-stab-row" style="display:none"><span class="result-label">Stab distribution</span><span id="t11-stab-dist"></span></div>
+      </div>
+      <!-- Source selector -->
+      <div style="display:flex; align-items:center; gap:10px; margin:10px 0; font-family:var(--mono); font-size:0.82rem;">
+        <label style="color:var(--text2); font-weight:600;">Source:</label>
+        <select id="t11-source" onchange="t11UpdateAssignment()" style="padding:5px 10px; border:1px solid var(--purple); border-radius:5px; background:var(--surface2); color:var(--text); font-family:var(--mono); font-size:0.8rem;">
+          <option value="10" selected>10 — Nouveau (sans biais ×16)</option>
+          <option value="10i">10I — Ancien (sans biais ×16)</option>
+          <option value="10g">10G — Ordre-3 cycle ×16</option>
+          <option value="10a">10a — r180 (C2) — 1 fichier</option>
+          <option value="10e">10E — C3 involution — 1 fichier</option>
+          <option value="10f">10F — C4 transpose — 1 fichier</option>
+        </select>
+      </div>
+      <!-- 8 worker mini-cards -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0" id="t11-workers">
+        <div class="mini-part" id="t11w1"><b>W1</b> <span class="task-status idle" id="status-task11_w1" style="font-size:11px">--</span><br><span id="t11w1f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w1" onclick="stopTask('task11_w1')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w1')">↺</button></div></div>
+        <div class="mini-part" id="t11w2"><b>W2</b> <span class="task-status idle" id="status-task11_w2" style="font-size:11px">--</span><br><span id="t11w2f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w2" onclick="stopTask('task11_w2')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w2')">↺</button></div></div>
+        <div class="mini-part" id="t11w3"><b>W3</b> <span class="task-status idle" id="status-task11_w3" style="font-size:11px">--</span><br><span id="t11w3f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w3" onclick="stopTask('task11_w3')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w3')">↺</button></div></div>
+        <div class="mini-part" id="t11w4"><b>W4</b> <span class="task-status idle" id="status-task11_w4" style="font-size:11px">--</span><br><span id="t11w4f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w4" onclick="stopTask('task11_w4')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w4')">↺</button></div></div>
+        <div class="mini-part" id="t11w5"><b>W5</b> <span class="task-status idle" id="status-task11_w5" style="font-size:11px">--</span><br><span id="t11w5f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w5" onclick="stopTask('task11_w5')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w5')">↺</button></div></div>
+        <div class="mini-part" id="t11w6"><b>W6</b> <span class="task-status idle" id="status-task11_w6" style="font-size:11px">--</span><br><span id="t11w6f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w6" onclick="stopTask('task11_w6')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w6')">↺</button></div></div>
+        <div class="mini-part" id="t11w7"><b>W7</b> <span class="task-status idle" id="status-task11_w7" style="font-size:11px">--</span><br><span id="t11w7f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w7" onclick="stopTask('task11_w7')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w7')">↺</button></div></div>
+        <div class="mini-part" id="t11w8"><b>W8</b> <span class="task-status idle" id="status-task11_w8" style="font-size:11px">--</span><br><span id="t11w8f" style="font-size:9px;color:var(--purple);font-weight:600"></span><br><span id="t11w8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask11W(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task11_w8" onclick="stopTask('task11_w8')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task11_w8')">↺</button></div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="startAllTask11()">▶ Start All 8</button>
+        <button class="btn stop" onclick="stopAllTask11()">⏸ Stop All</button>
+        <button class="btn" onclick="resetAllTask11()">↺ Reset All</button>
+        <button class="btn" onclick="window.open('/api/exports/task11_catalog.json','_blank')">Export JSON</button>
+      </div>
+    </div>
+
+    <!-- Task 12 — Crystal Grid Minimum Clues -->
+    <div class="task-card" id="card-task12" style="border-color: #f472b6;">
+      <div class="task-header">
+        <div><div class="task-id" style="color:#f472b6">Task 12</div><div class="task-title">Crystal Grid — Minimum Clues (Proven)</div></div>
+      </div>
+      <div class="method-box">
+        <span class="formula">Grid:</span> Grille modèle : back-circulant (Crystal Grid) — |Aut|=648 (total 1296 avec swap d↔c)<br>
+        <span class="formula">Phase 1:</span> Greedy removal × N shuffles → borne supérieure<br>
+        <span class="formula">Phase 2:</span> Criticité — chaque indice est nécessaire (preuve)<br>
+        <span class="formula">Phase 3:</span> 2-swap — tente d'améliorer en échangeant 2 indices
+      </div>
+      <div class="result-box" id="task12-recap" style="display:block; border-color:#f472b6; margin-bottom:8px;">
+        <div style="font-size:0.8rem; color:#f472b6; font-weight:600; margin-bottom:6px;">🔮 Crystal Grid Min Clues</div>
+        <div class="result-row"><span class="result-label">Best minimum</span><span class="result-value" id="t12-best" style="color:#f472b6;font-weight:bold">—</span></div>
+        <div class="result-row"><span class="result-label">Total shuffles</span><span id="t12-total-shuffles">0</span></div>
+        <div class="result-row"><span class="result-label">Distribution</span><span id="t12-dist" style="font-size:10px">—</span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0">
+        <div class="mini-part" id="t12w1"><b>W1</b> <span class="task-status idle" id="status-task12_w1" style="font-size:11px">--</span><br><span id="t12w1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w1" onclick="stopTask('task12_w1')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w1')">↺</button></div></div>
+        <div class="mini-part" id="t12w2"><b>W2</b> <span class="task-status idle" id="status-task12_w2" style="font-size:11px">--</span><br><span id="t12w2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w2" onclick="stopTask('task12_w2')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w2')">↺</button></div></div>
+        <div class="mini-part" id="t12w3"><b>W3</b> <span class="task-status idle" id="status-task12_w3" style="font-size:11px">--</span><br><span id="t12w3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w3" onclick="stopTask('task12_w3')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w3')">↺</button></div></div>
+        <div class="mini-part" id="t12w4"><b>W4</b> <span class="task-status idle" id="status-task12_w4" style="font-size:11px">--</span><br><span id="t12w4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w4" onclick="stopTask('task12_w4')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w4')">↺</button></div></div>
+        <div class="mini-part" id="t12w5"><b>W5</b> <span class="task-status idle" id="status-task12_w5" style="font-size:11px">--</span><br><span id="t12w5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w5" onclick="stopTask('task12_w5')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w5')">↺</button></div></div>
+        <div class="mini-part" id="t12w6"><b>W6</b> <span class="task-status idle" id="status-task12_w6" style="font-size:11px">--</span><br><span id="t12w6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w6" onclick="stopTask('task12_w6')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w6')">↺</button></div></div>
+        <div class="mini-part" id="t12w7"><b>W7</b> <span class="task-status idle" id="status-task12_w7" style="font-size:11px">--</span><br><span id="t12w7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w7" onclick="stopTask('task12_w7')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w7')">↺</button></div></div>
+        <div class="mini-part" id="t12w8"><b>W8</b> <span class="task-status idle" id="status-task12_w8" style="font-size:11px">--</span><br><span id="t12w8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask12W(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task12_w8" onclick="stopTask('task12_w8')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task12_w8')">↺</button></div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="startAllTask12()">▶ Start All 8</button>
+        <button class="btn stop" onclick="stopAllTask12()">⏸ Stop All</button>
+        <button class="btn" onclick="resetAllTask12()">↺ Reset All</button>
+        <button class="btn" onclick="window.open('/api/task12/summary','_blank')">Export JSON</button>
+      </div>
+    </div>
+
+    <!-- Task 13 — Stab 162 Digit Grid: Generation + Independent Catalog -->
+    <div class="task-card" id="card-task13" style="border-color: #06b6d4;">
+      <div class="task-header">
+        <div><div class="task-id" style="color:#06b6d4">Task 13</div><div class="task-title">Grille modèle : Stab 162 — Generation + Catalogue indépendant</div></div>
+      </div>
+      <div class="method-box">
+        <span class="formula">Grille modèle :</span> Stab 162 — digits: 012345678 / 345678012 / 678012345 / 156480723 / 480723156 / 723156480 / 264507831 / 507831264 / 831264507<br>
+        <span class="formula">Phase 1:</span> 8 threads génération (CP-SAT) — avec sonde de symétrie configurable<br>
+        <span class="formula">Phase 2:</span> 8 threads catalogue — canonicalise, swap check, catalogue séparé par sonde
+      </div>
+
+      <!-- ─── Phase 1: Generation ─── -->
+      <div style="font-size:0.8rem; color:#06b6d4; font-weight:600; margin:10px 0 6px;">📥 Phase 1 — Génération mates (CP-SAT)</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+        <span style="font-family:var(--mono); font-size:0.72rem; color:var(--text2);">🔬 Sonde :</span>
+        <select id="t13-gen-probe" class="probe-select" onchange="onT13GenProbeChange()">
+          <option value="standard">Standard (aucune symétrie)</option>
+          <option value="r180">Rotation 180°</option>
+          <option value="order3">Ordre 3 (cycle colonnes)</option>
+          <option value="c3inv">C3 involution</option>
+          <option value="c4trans">C4 transposée</option>
+          <option value="s162inv">Stab162 involution</option>
+          <option value="s162o3">Stab162 ordre 3 (stacks)</option>
+        </select>
+      </div>
+      <div id="t13-gen-probe-info" class="probe-info">Énumération exhaustive sans contrainte de symétrie sur la couche couleur</div>
+
+      <div class="result-box" id="task13-gen" style="display:block; border-color:#06b6d4; margin-bottom:6px; padding:6px 10px;">
+        <div class="result-row"><span class="result-label">Grilles générées</span><span class="result-value" id="t13-found">0</span></div>
+        <div class="result-row"><span class="result-label">Sonde active</span><span id="t13-gen-active-probe" style="color:var(--accent);font-weight:600;font-size:0.78rem">standard</span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0">
+        <div class="mini-part" id="t13p1"><b>P1</b> <span class="task-status idle" id="status-task13_p1" style="font-size:11px">--</span><br><span id="t13p1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p1" onclick="stopTask13P(1)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(1)">↺</button></div></div>
+        <div class="mini-part" id="t13p2"><b>P2</b> <span class="task-status idle" id="status-task13_p2" style="font-size:11px">--</span><br><span id="t13p2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p2" onclick="stopTask13P(2)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(2)">↺</button></div></div>
+        <div class="mini-part" id="t13p3"><b>P3</b> <span class="task-status idle" id="status-task13_p3" style="font-size:11px">--</span><br><span id="t13p3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p3" onclick="stopTask13P(3)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(3)">↺</button></div></div>
+        <div class="mini-part" id="t13p4"><b>P4</b> <span class="task-status idle" id="status-task13_p4" style="font-size:11px">--</span><br><span id="t13p4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p4" onclick="stopTask13P(4)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(4)">↺</button></div></div>
+        <div class="mini-part" id="t13p5"><b>P5</b> <span class="task-status idle" id="status-task13_p5" style="font-size:11px">--</span><br><span id="t13p5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p5" onclick="stopTask13P(5)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(5)">↺</button></div></div>
+        <div class="mini-part" id="t13p6"><b>P6</b> <span class="task-status idle" id="status-task13_p6" style="font-size:11px">--</span><br><span id="t13p6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p6" onclick="stopTask13P(6)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(6)">↺</button></div></div>
+        <div class="mini-part" id="t13p7"><b>P7</b> <span class="task-status idle" id="status-task13_p7" style="font-size:11px">--</span><br><span id="t13p7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p7" onclick="stopTask13P(7)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(7)">↺</button></div></div>
+        <div class="mini-part" id="t13p8"><b>P8</b> <span class="task-status idle" id="status-task13_p8" style="font-size:11px">--</span><br><span id="t13p8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13P(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_p8" onclick="stopTask13P(8)" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask13P(8)">↺</button></div></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn primary" onclick="startAllTask13P()">▶ Start All 8×2</button>
+        <button class="btn stop" onclick="stopAllTask13P()">⏸ Stop All</button>
+        <button class="btn" onclick="resetAllTask13P()">↺ Reset All</button>
+      </div>
+
+      <!-- ─── Phase 2: Catalog ─── -->
+      <div style="font-size:0.8rem; color:#06b6d4; font-weight:600; margin:6px 0;">📊 Phase 2 — Catalogue (canonicalisation + swap)</div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+        <span style="font-family:var(--mono); font-size:0.72rem; color:var(--text2);">📂 Source :</span>
+        <select id="t13-cat-probe" class="probe-select" onchange="onT13CatProbeChange()">
+          <option value="standard">Standard — chargement...</option>
+        </select>
+        <button class="btn" style="padding:2px 8px;font-size:10px" onclick="refreshT13Probes()" title="Scanner les fichiers disponibles">🔄 Scan</button>
+      </div>
+      <div id="t13-cat-probe-info" class="probe-info" style="display:none;"></div>
+
+      <div class="result-box" id="task13-cat-recap" style="display:block; border-color:#06b6d4; margin-bottom:6px; padding:6px 10px;">
+        <div class="result-row"><span class="result-label">Orbites</span><span class="result-value" id="t13-n-orbits">0</span></div>
+        <div class="result-row"><span class="result-label">Self-dual</span><span id="t13-self-dual">0</span></div>
+        <div class="result-row"><span class="result-label">Top |Stab|</span><span id="t13-top-stab" style="color:var(--accent);font-weight:bold">0</span></div>
+        <div class="result-row"><span class="result-label">Grilles traitées</span><span id="t13-total-grids">0</span></div>
+        <div class="result-row" id="t13-stab-row" style="display:none"><span class="result-label">Stab distribution</span><span id="t13-stab-dist"></span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 0">
+        <div class="mini-part" id="t13w1"><b>C1</b> <span class="task-status idle" id="status-task13_w1" style="font-size:11px">--</span><br><span id="t13w1f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w1i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(1)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w1" onclick="stopTask('task13_w1')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w1')">↺</button></div></div>
+        <div class="mini-part" id="t13w2"><b>C2</b> <span class="task-status idle" id="status-task13_w2" style="font-size:11px">--</span><br><span id="t13w2f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w2i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(2)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w2" onclick="stopTask('task13_w2')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w2')">↺</button></div></div>
+        <div class="mini-part" id="t13w3"><b>C3</b> <span class="task-status idle" id="status-task13_w3" style="font-size:11px">--</span><br><span id="t13w3f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w3i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(3)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w3" onclick="stopTask('task13_w3')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w3')">↺</button></div></div>
+        <div class="mini-part" id="t13w4"><b>C4</b> <span class="task-status idle" id="status-task13_w4" style="font-size:11px">--</span><br><span id="t13w4f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w4i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(4)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w4" onclick="stopTask('task13_w4')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w4')">↺</button></div></div>
+        <div class="mini-part" id="t13w5"><b>C5</b> <span class="task-status idle" id="status-task13_w5" style="font-size:11px">--</span><br><span id="t13w5f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w5i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(5)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w5" onclick="stopTask('task13_w5')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w5')">↺</button></div></div>
+        <div class="mini-part" id="t13w6"><b>C6</b> <span class="task-status idle" id="status-task13_w6" style="font-size:11px">--</span><br><span id="t13w6f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w6i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(6)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w6" onclick="stopTask('task13_w6')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w6')">↺</button></div></div>
+        <div class="mini-part" id="t13w7"><b>C7</b> <span class="task-status idle" id="status-task13_w7" style="font-size:11px">--</span><br><span id="t13w7f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w7i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(7)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w7" onclick="stopTask('task13_w7')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w7')">↺</button></div></div>
+        <div class="mini-part" id="t13w8"><b>C8</b> <span class="task-status idle" id="status-task13_w8" style="font-size:11px">--</span><br><span id="t13w8f" style="font-size:9px;color:#06b6d4;font-weight:600"></span><br><span id="t13w8i" style="font-size:10px;color:var(--text2)"></span><div class="btn-row" style="margin:3px 0"><button class="btn primary" style="padding:2px 6px;font-size:10px" onclick="startTask13W(8)">▶</button><button class="btn stop" style="padding:2px 6px;font-size:10px" id="btn-stop-task13_w8" onclick="stopTask('task13_w8')" disabled>⏸</button><button class="btn" style="padding:2px 6px;font-size:10px" onclick="resetTask('task13_w8')">↺</button></div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="startAllTask13()">▶ Start Cat 8</button>
+        <button class="btn stop" onclick="stopAllTask13()">⏸ Stop Cat</button>
+        <button class="btn" onclick="resetAllTask13()">↺ Reset Cat</button>
+        <button class="btn" id="t13-export-btn" onclick="t13ExportCatalog()">Export JSON</button>
+      </div>
+    </div>
+
+
+  </div>
+  <div class="tab-content" id="tab-grilles">
+    <div class="grid-nav-bar">
+      <button class="btn" onclick="loadGridsPage(gridPage-1)">Prev</button>
+      <span id="grid-page-info">Page 1</span>
+      <button class="btn" onclick="loadGridsPage(gridPage+1)">Next</button>
+      <span style="margin-left:auto;">
+        <button class="btn" onclick="exportGrids()">Export full JSON</button>
+      </span>
+    </div>
+    <div id="grids-container" class="grid-gallery">
+      <div class="no-grids">No grids found. Run Task 03 in the Tasks tab.</div>
+    </div>
+  </div>
+
+  <!-- TAB: LOG -->
+  <div class="tab-content" id="tab-journal">
+    <div class="log-filter">
+      <button class="active" onclick="setLogFilter(null, this)">All</button>
+      <button onclick="setLogFilter('task1', this)">Task 01</button>
+      <button onclick="setLogFilter('task2', this)">Task 02</button>
+      <button onclick="setLogFilter('task3', this)">Task 03</button>
+      <button onclick="setLogFilter('task5', this)">Task 05</button>
+      <button onclick="setLogFilter('task6', this)">Task 06</button>
+      <button onclick="setLogFilter('task7', this)">Task 07</button>
+      <button onclick="setLogFilter('task10', this)">Task 10</button>
+      <button onclick="setLogFilter('task11', this)">Task 11</button>
+      <button onclick="setLogFilter('task12', this)">Task 12</button>
+      <button onclick="setLogFilter('task13', this)">Task 13</button>
+    </div>
+    <div class="log-body" id="log-body"></div>
+  </div>
+
+  <div class="tab-content" id="tab-perf">
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+      <label style="font-family:var(--mono); font-size:0.8rem; color:var(--text2);">Task:</label>
+      <select id="perf-task" onchange="onPerfTaskChange()" style="font-family:var(--mono); font-size:0.8rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 12px; cursor:pointer;">
+        <option value="task10">Task 10 — Back-Circulant</option>
+        <option value="task13">Task 13 — Stab 162</option>
+      </select>
+      <span id="perf-probe-wrap" style="display:none;">
+        <label style="font-family:var(--mono); font-size:0.8rem; color:var(--text2);">Sonde:</label>
+        <select id="perf-probe" onchange="loadPerfData()" style="font-family:var(--mono); font-size:0.8rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 12px; cursor:pointer;">
+          <option value="standard">Standard</option>
+          <option value="r180">Rotation 180°</option>
+          <option value="order3">Ordre 3</option>
+          <option value="c3inv">C3 involution</option>
+          <option value="c4trans">C4 transposée</option>
+          <option value="s162inv">Stab162 involution</option>
+          <option value="s162o3">Stab162 ordre 3 (stacks)</option>
+        </select>
+      </span>
+      <label style="font-family:var(--mono); font-size:0.8rem; color:var(--text2);">View:</label>
+      <select id="perf-mode" onchange="drawPerfChart()" style="font-family:var(--mono); font-size:0.8rem; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 12px; cursor:pointer;">
+        <option value="cumul">Cumul. grilles (log)</option>
+        <option value="rate">Débit instantané (grilles/s)</option>
+      </select>
+      <button onclick="loadPerfData()" class="btn primary" style="padding:6px 14px; font-size:0.75rem;">↻ Refresh</button>
+    </div>
+    <div id="perf-chart-container" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px;">
+      <div id="perf-eta" style="font-family:var(--mono); font-size:0.85rem; margin-bottom:14px; color:var(--text2);"></div>
+      <canvas id="perf-canvas" style="width:100%; height:420px; display:block;"></canvas>
+      <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.65rem; color:#475569; margin-top:4px; padding:0 4px;">
+        <span id="perf-x-start">0</span>
+        <span style="color:var(--text2);">Temps (heures)</span>
+        <span id="perf-x-end">-</span>
+      </div>
+      <div id="perf-legend" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; font-family:var(--mono); font-size:0.7rem;"></div>
+    </div>
+    <div id="perf-no-data" style="text-align:center; padding:60px 0; color:var(--text2); font-family:var(--mono);">
+      Aucune donnée perf. Lance un worker G pendant ≥1 min, puis clique ↻ Refresh.
+    </div>
+  </div>
+
+  <footer>suirodoku.com -- Feb 2026 -- OR-Tools CP-SAT -- C canonicalization -- v12</footer>
+</div>
+
+<script>
+// --- Tabs ---
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'grilles') loadGridsPage(0);
+  if (name === 'journal') pollLogs();
+  if (name === 'perf') loadPerfData();
+}
+
+// --- Utils ---
+function fmt(n) { return typeof n === 'number' ? n.toLocaleString('en-US') : n; }
+function fmtSci(n) {
+  if (!n || n === 0) return '0';
+  return Number(n).toExponential(2);
+}
+
+// --- API ---
+async function startTask(id) {
+  try {
+    var res = await fetch('/api/start/'+id,{method:'POST'});
+    var data = await res.json();
+    if (!res.ok) { alert('Start failed: '+(data.error||res.status)); }
+  } catch(e) { alert('Start error: '+e); }
+}
+async function stopTask(id) { await fetch('/api/stop/'+id,{method:'POST'}); }
+async function resetTask(id) { if(confirm('Delete checkpoint?')) await fetch('/api/reset/'+id,{method:'POST'}); }
+function exportGrids() { window.open('/api/exports/task3_grids.json','_blank'); }
+
+async function setTask3Target() {
+  var val = parseInt(document.getElementById('task3-target').value);
+  if (!val || val < 1) { alert('Enter a valid number'); return; }
+  var res = await fetch('/api/task3/target', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({target:val})});
+  var data = await res.json();
+  document.getElementById('task3-target').value = data.target;
+  window._task3LiveTarget = data.target;
+  window._task3TargetCooldown = Date.now() + 5000; // don't overwrite for 5s
+}
+
+async function loadTask3Target() {
+  try {
+    var res = await fetch('/api/task3/target');
+    var data = await res.json();
+    document.getElementById('task3-target').value = data.target;
+    window._task3LiveTarget = data.target;
+  } catch(e) {}
+}
+
+// --- Grid rendering ---
+function renderGrid(gridData, container) {
+  if (!gridData || !gridData.length) { container.innerHTML = ''; return; }
+  var html = '<div class="suirodoku-grid">';
+  for (var r = 0; r < 9; r++) {
+    for (var c = 0; c < 9; c++) {
+      var cell = gridData[r][c];
+      var classes = ['cell', 'color-'+cell.c];
+      if (c === 2 || c === 5) classes.push('col-'+c);
+      if (r === 2 || r === 5) classes.push('row-'+r);
+      html += '<div class="'+classes.join(' ')+'"><span class="digit">'+cell.d+'</span><span class="color-label">'+cell.c+'</span></div>';
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// --- Grids gallery ---
+var gridPage = 0;
+async function loadGridsPage(page) {
+  if (page < 0) page = 0;
+  gridPage = page;
+  try {
+    var res = await fetch('/api/grids?page='+page+'&per_page=4');
+    var data = await res.json();
+    var container = document.getElementById('grids-container');
+    document.getElementById('grid-page-info').textContent = 'Page '+(page+1)+' -- '+data.total+' grids total';
+    document.getElementById('grid-tab-count').textContent = data.total;
+    if (data.total === 0) {
+      container.innerHTML = '<div class="no-grids">No grids found. Run Task 03 in the Tasks tab.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    data.grids.forEach(function(g, i) {
+      var card = document.createElement('div');
+      card.className = 'grid-card';
+      var globalIdx = page * 4 + i + 1;
+      card.innerHTML = '<h4>Grid #'+globalIdx+'</h4><div class="grid-render"></div>'
+        +'<div class="grid-meta">'
+        +'Hash: '+g.grid_hash+'<br>'
+        +'Attempt '+g.found_at_attempt+' -- '+g.solve_time+'s -- seed '+g.seed+'<br>'
+        +'<span class="badge ok">Digits OK</span>'
+        +'<span class="badge ok">Colors OK</span>'
+        +'<span class="badge ok">Pairs OK</span>'
+        +'</div>';
+      container.appendChild(card);
+      renderGrid(g.grid, card.querySelector('.grid-render'));
+    });
+  } catch(e) {}
+}
+
+
+
+// --- Log ---
+var logFilter = null;
+function setLogFilter(task, btn) {
+  logFilter = task;
+  document.querySelectorAll('.log-filter button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  pollLogs();
+}
+async function pollLogs() {
+  try {
+    var url = logFilter ? '/api/logs?n=300&task='+logFilter : '/api/logs?n=300';
+    var res = await fetch(url);
+    var entries = await res.json();
+    var body = document.getElementById('log-body');
+    var atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 50;
+    body.innerHTML = entries.map(function(e) {
+      return '<div class="log-entry '+e.level+'"><span class="log-time">'+e.t+'</span><span class="log-task '+e.task+'">['+e.task.toUpperCase()+']</span><span class="log-msg">'+e.msg+'</span></div>';
+    }).join('');
+    if (atBottom) body.scrollTop = body.scrollHeight;
+  } catch(e) {}
+}
+
+// --- Status ---
+function setStatus(id, status) {
+  var el = document.getElementById('status-'+id);
+  var card = document.getElementById('card-'+id);
+  if(el) { el.className = 'task-status '+status; }
+  if (card) card.className = 'task-card '+status;
+  var labels = {idle:'Idle',running:'Running',done:'Done',paused:'Paused',error:'Error'};
+  if(el) el.textContent = labels[status]||status;
+  var btn = document.getElementById('btn-start-'+id);
+  if(btn) { btn.disabled = (status==='running'); btn.textContent = status==='paused'?'Resume':status==='done'?'Re-run':'Start'; }
+  var stop = document.getElementById('btn-stop-'+id);
+  if(stop) stop.disabled = (status!=='running');
+}
+
+function updateTask1(t) {
+  if (!t) return;
+  setStatus('task1', t.status);
+  if (t.status==='running') {
+    document.getElementById('progress-task1').style.display='block';
+    document.getElementById('bar-task1').style.width='50%';
+    document.getElementById('s1l').innerHTML='<span class="running-dot"></span>Solutions: '+fmt(t.progress.solutions_found||0);
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task1').style.display='block';
+    document.getElementById('bar-task1').style.width='100%';
+    document.getElementById('bar-task1').className='progress-bar-fill done';
+    document.getElementById('s1l').textContent='Done'; document.getElementById('s1r').textContent=r.elapsed+'s';
+    document.getElementById('result-task1').style.display='block';
+    document.getElementById('result-task1').innerHTML=
+      '<div class="result-row"><span class="result-label">|S4| = Suirodoku 4x4 grids</span><span class="result-value">'+fmt(r.count)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Sudoku 4x4 grids (Seta 2012)</span><span>288</span></div>'+
+      '<div class="result-row"><span class="result-label">Ratio</span><span>'+r.count+' / 288 = '+(r.count/288).toFixed(1)+'x</span></div>'+
+      '<div class="result-row"><span class="result-label">Factorization</span><span>'+r.count+' = 2^8 * 3^2</span></div>';
+  }
+}
+
+function updateTask2(t) {
+  if (!t) return;
+  setStatus('task2', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task2').style.display='block';
+    document.getElementById('bar-task2').style.width=(p.percent||0)+'%';
+    document.getElementById('s2l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      fmt(p.checked||0)+' / '+fmt(p.total||0)+' ('+((p.percent||0))+'%) -- '+(p.rate||0)+'/s';
+    document.getElementById('s2r').textContent='Stab: '+fmt(p.stabilizer_count||0)+' -- ETA: '+(p.eta_seconds||'?')+'s';
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task2').style.display='block';
+    document.getElementById('bar-task2').style.width='100%';
+    document.getElementById('bar-task2').className='progress-bar-fill done';
+    document.getElementById('s2l').textContent='Done -- '+fmt(r.checked)+' transforms';
+    document.getElementById('s2r').textContent=r.elapsed+'s';
+    document.getElementById('result-task2').style.display='block';
+    document.getElementById('result-task2').innerHTML=
+      '<div class="result-row"><span class="result-label">Transforms tested</span><span>'+fmt(r.checked)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">|Stabilizer|</span><span class="result-value">'+fmt(r.stabilizer_count)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">|G_full|</span><span>'+fmtSci(r.full_group_order)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">|Orbit| = |G| / |Stab|</span><span class="result-value">'+fmtSci(r.orbit_size)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">= distinct grids in Orb(G0)</span><span></span></div>';
+  }
+}
+
+function updateTask3(t) {
+  if (!t) return;
+  setStatus('task3', t.status);
+  var p = t.progress||{};
+  // Target input is managed by loadTask3Target/setTask3Target only — no polling overwrite
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task3').style.display='block';
+    document.getElementById('bar-task3').style.width=(p.percent||0)+'%';
+    document.getElementById('s3l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      'Attempts: '+fmt(p.attempts||0)+'/'+fmt(window._task3LiveTarget||p.max_attempts||5000)+' -- Success: '+(p.success_rate||0)+'%';
+    document.getElementById('s3r').textContent=
+      'Found: '+fmt(p.found||0)+' | Failed: '+fmt(p.failed||0)+' | Last: '+(p.last_solve_time||'?')+'s';
+    document.getElementById('grid-tab-count').textContent = p.found||0;
+  }
+  if ((t.status==='done'||t.status==='idle') && t.result) {
+    var r=t.result;
+    var n = r.found_grids_count||r.total_distinct||0;
+    var sr = r.attempts>0?(100*n/r.attempts).toFixed(1):0;
+    var remaining = (window._task3LiveTarget||r.max_attempts||5000) - (r.attempts||0);
+    document.getElementById('progress-task3').style.display='block';
+    document.getElementById('bar-task3').style.width=Math.round(100*(r.attempts||0)/(window._task3LiveTarget||r.max_attempts||5000))+'%';
+    document.getElementById('bar-task3').className='progress-bar-fill'+(t.status==='done'?' done':'');
+    document.getElementById('result-task3').style.display='block';
+    document.getElementById('result-task3').innerHTML=
+      '<div class="result-row"><span class="result-label">Attempts</span><span>'+fmt(r.attempts)+' / '+fmt(window._task3LiveTarget||r.max_attempts||5000)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Distinct grids</span><span class="result-value">'+fmt(n)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Failed</span><span>'+fmt(r.failed_attempts)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Success rate</span><span>'+sr+'%</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>'+
+      (remaining>0?'<div class="result-row"><span class="result-label">Remaining</span><span style="color:var(--orange)">'+fmt(remaining)+' attempts left</span></div>':'')+
+      '<div class="result-row"><span class="result-label">Export</span><span><a href="/api/exports/task3_grids.json" target="_blank" style="color:var(--accent)">task3_grids.json</a></span></div>';
+    document.getElementById('grid-tab-count').textContent = n;
+  }
+}
+
+function drawDiscoveryCurve(curve) {
+  var box = document.getElementById('discovery-chart-box');
+  if (!curve || curve.length < 2) { box.style.display='none'; return; }
+  box.style.display='block';
+
+  var canvas = document.getElementById('discovery-canvas');
+  var ctx = canvas.getContext('2d');
+  // Adapt canvas to actual rendered size
+  var rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * (window.devicePixelRatio || 1));
+  canvas.height = Math.round(rect.height * (window.devicePixelRatio || 1));
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  var W = rect.width, H = rect.height;
+  var pad = {l:40, r:16, t:10, b:20};
+  var cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+
+  var maxG = Math.max.apply(null, curve.map(function(p){return p.grids;}));
+  var maxO = Math.max.apply(null, curve.map(function(p){return p.orbits;}));
+  if (maxG===0) maxG=1; if (maxO===0) maxO=1;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for (var i=0;i<=4;i++) {
+    var y=pad.t+ch*(1-i/4);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+cw,y); ctx.stroke();
+  }
+
+  // Y axis labels
+  ctx.fillStyle='#475569'; ctx.font='10px JetBrains Mono'; ctx.textAlign='right';
+  for (var i=0;i<=4;i++) {
+    var val=Math.round(maxO*i/4);
+    var y=pad.t+ch*(1-i/4);
+    ctx.fillText(val, pad.l-6, y+3);
+  }
+
+  // Data line
+  ctx.beginPath(); ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2.5;
+  curve.forEach(function(p, i) {
+    var x = pad.l + (p.grids/maxG)*cw;
+    var y = pad.t + ch*(1 - p.orbits/maxO);
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Fill under
+  ctx.lineTo(pad.l + (curve[curve.length-1].grids/maxG)*cw, pad.t+ch);
+  ctx.lineTo(pad.l + (curve[0].grids/maxG)*cw, pad.t+ch);
+  ctx.closePath();
+  ctx.fillStyle='rgba(34,211,238,0.08)'; ctx.fill();
+
+  // Dots
+  ctx.fillStyle='#22d3ee';
+  curve.forEach(function(p) {
+    var x = pad.l + (p.grids/maxG)*cw;
+    var y = pad.t + ch*(1 - p.orbits/maxO);
+    ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+  });
+
+  // Delta labels (new orbits per segment)
+  ctx.fillStyle='#94a3b8'; ctx.font='9px JetBrains Mono'; ctx.textAlign='center';
+  for (var i=1;i<curve.length;i++) {
+    var delta = curve[i].orbits - curve[i-1].orbits;
+    var x = pad.l + ((curve[i].grids+curve[i-1].grids)/2/maxG)*cw;
+    var y = pad.t + ch*(1 - (curve[i].orbits+curve[i-1].orbits)/2/maxO) - 10;
+    if (delta>0) ctx.fillText('+'+delta, x, y);
+  }
+
+  // X axis
+  document.getElementById('discovery-x-start').textContent = curve[0].grids;
+  document.getElementById('discovery-x-end').textContent = curve[curve.length-1].grids;
+
+  // Rate
+  var last = curve[curve.length-1], first = curve[0];
+  var rate = last.grids>first.grids ? ((last.orbits-first.orbits)/(last.grids-first.grids)).toFixed(2) : '?';
+  document.getElementById('discovery-rate').textContent = 'Rate: '+rate+' orbits/grid';
+
+  // Table
+  var tbody = document.getElementById('discovery-table-body');
+  var wrap = document.getElementById('discovery-table-wrap');
+  var rows = '';
+  for (var i=0; i<curve.length; i++) {
+    var delta = i>0 ? curve[i].orbits - curve[i-1].orbits : curve[i].orbits;
+    var dGrids = i>0 ? curve[i].grids - curve[i-1].grids : curve[i].grids;
+    var segRate = dGrids>0 ? (delta/dGrids).toFixed(2) : '-';
+    var deltaColor = delta>0 ? 'color:var(--green)' : 'color:var(--text3)';
+    rows += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">' +
+      '<td style="padding:3px 6px;">'+curve[i].grids+'</td>' +
+      '<td style="text-align:right; padding:3px 6px; color:var(--accent); font-weight:600;">'+curve[i].orbits+'</td>' +
+      '<td style="text-align:right; padding:3px 6px; '+deltaColor+'">+'+ delta+'</td>' +
+      '<td style="text-align:right; padding:3px 6px; color:var(--text2);">'+segRate+'</td></tr>';
+  }
+  tbody.innerHTML = rows;
+  wrap.style.display = 'block';
+  // Auto-scroll to bottom to show latest entry
+  wrap.scrollTop = wrap.scrollHeight;
+  // Highlight last row
+  var allRows = tbody.querySelectorAll('tr');
+  if (allRows.length > 0) {
+    allRows[allRows.length-1].style.background = 'rgba(34,211,238,0.08)';
+  }
+}
+
+function updateTask4(t) {
+  if (!t) return;
+  setStatus('task4', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task4').style.display='block';
+    document.getElementById('bar-task4').style.width=(p.percent||0)+'%';
+    var detail = 'Canonicalization: '+fmt(p.processed||0)+'/'+fmt(p.total||0)+' grids';
+    document.getElementById('s4l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+detail;
+    document.getElementById('s4r').textContent='Orbits: '+fmt(p.n_orbits||0)+' — '+(p.percent||0)+'%';
+    if (p.discovery_curve) drawDiscoveryCurve(p.discovery_curve);
+  }
+  if ((t.status==='done'||t.status==='idle') && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task4').style.display='block';
+    document.getElementById('bar-task4').style.width=(t.status==='done'?'100%':Math.round(100*r.processed/Math.max(1,r.total))+'%');
+    document.getElementById('bar-task4').className='progress-bar-fill'+(t.status==='done'?' done':'');
+    var statusText = 'Classified: '+fmt(r.processed)+' grids — '+fmt(r.n_orbits)+' orbits';
+    if (t.status==='idle' && p.new_grids_pending) {
+      statusText += ' — <span style="color:var(--orange)">+'+fmt(p.new_grids_pending)+' pending</span>';
+    }
+    document.getElementById('s4l').innerHTML=statusText;
+    document.getElementById('s4r').textContent=t.status==='done'?'Done':'Ready to resume';
+    document.getElementById('result-task4').style.display='block';
+    document.getElementById('result-task4').innerHTML=
+      '<div class="result-row"><span class="result-label">Grids classified</span><span>'+fmt(r.processed)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Distinct orbits</span><span class="result-value">'+fmt(r.n_orbits)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>';
+    if (r.discovery_curve) drawDiscoveryCurve(r.discovery_curve);
+  }
+}
+
+function updateTask5(t) {
+  if (!t) return;
+  setStatus('task5', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task5').style.display='block';
+    document.getElementById('bar-task5').style.width=(p.percent||0)+'%';
+    document.getElementById('s5l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      'Grids: '+fmt(p.processed||0)+'/'+fmt(p.total||0)+
+      ' -- V1 min: '+fmt(p.global_min_v1||'?')+' -- V2 min: '+fmt(p.global_min_v2||'?');
+    document.getElementById('s5r').textContent=(p.percent||0)+'%';
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task5').style.display='block';
+    document.getElementById('bar-task5').style.width='100%';
+    document.getElementById('bar-task5').className='progress-bar-fill done';
+    document.getElementById('result-task5').style.display='block';
+    var dist = r.distribution ? Object.entries(r.distribution).map(function(e){return e[0]+':'+e[1];}).join(', ') : '';
+    document.getElementById('result-task5').innerHTML=
+      '<div class="result-row"><span class="result-label">Grids tested</span><span>'+fmt(r.processed)+' / 2,304</span></div>'+
+      '<div class="result-row"><span class="result-label">V1 -- Full pairs</span><span class="result-value">'+fmt(r.global_min_v1)+' clues min</span></div>'+
+      '<div class="result-row"><span class="result-label">V2 -- Partial clues</span><span class="result-value">'+fmt(r.global_min_v2)+' clues min</span></div>'+
+      '<div class="result-row"><span class="result-label">Comparison Sudoku 4x4</span><span>4 clues min</span></div>'+
+      '<div class="result-row"><span class="result-label">V1 distribution</span><span style="font-size:0.7rem">'+dist+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s</span></div>';
+  }
+}
+
+function updateTask6(t) {
+  if (!t) return;
+  setStatus('task6', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task6').style.display='block';
+    document.getElementById('bar-task6').style.width=(p.percent||0)+'%';
+    document.getElementById('s6l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      'Unique Sudoku: '+fmt(p.processed||0)+'/'+fmt(p.total||0)+' -- Avg mates: '+(p.avg_mates||'?');
+    document.getElementById('s6r').textContent='Last: '+(p.last_count||'?')+' mates';
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task6').style.display='block';
+    document.getElementById('bar-task6').style.width='100%';
+    document.getElementById('bar-task6').className='progress-bar-fill done';
+    document.getElementById('result-task6').style.display='block';
+    var dist = r.distribution ? Object.entries(r.distribution).map(function(e){return e[0]+' mates:'+e[1];}).join(', ') : '';
+    document.getElementById('result-task6').innerHTML=
+      '<div class="result-row"><span class="result-label">Unique Sudoku analyzed</span><span>'+fmt(r.processed)+' (deduplicated)</span></div>'+
+      '<div class="result-row"><span class="result-label">Avg mates per Sudoku</span><span class="result-value">'+r.avg_mates+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Min / Max mates</span><span>'+r.min_mates+' / '+r.max_mates+(r.max_mates>=100?' (cap)':'')+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Unique mate Sudoku</span><span>'+fmt(r.unique_mate_count)+' ('+Math.round(100*r.unique_mate_count/r.processed)+'%)</span></div>'+
+      '<div class="result-row"><span class="result-label">Distribution</span><span style="font-size:0.7rem">'+dist+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>';
+  }
+}
+
+// --- Task 7: Orbit selection ---
+var t7Orbits = [];
+
+async function loadTask7Orbits() {
+  try {
+    var res = await fetch('/api/task7/orbits');
+    var data = await res.json();
+    t7Orbits = data.orbits || [];
+    var panel = document.getElementById('task7-orbit-panel');
+    panel.style.display = 'block';
+    var tbody = document.getElementById('t7-orbit-body');
+    tbody.innerHTML = '';
+    for (var i = 0; i < t7Orbits.length; i++) {
+      var o = t7Orbits[i];
+      var tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border)';
+      var stabStr = o.stab_size !== null ? o.stab_size : '?';
+      var symStr = o.symmetries && o.symmetries.length > 0 ? o.symmetries[0] : '-';
+      if (symStr.length > 25) symStr = symStr.substring(0, 22) + '...';
+      var clueStr = o.min_clues !== null ? '<span style="color:var(--accent)">'+o.min_clues+'</span>' : '-';
+      var checked = o.min_clues === null ? 'checked' : '';
+      tr.innerHTML =
+        '<td style="padding:3px 6px; text-align:center"><input type="checkbox" class="t7-cb" data-hash="'+o.hash+'" '+checked+' onchange="t7UpdateCount()"></td>'+
+        '<td style="padding:3px 6px">'+o.index+'</td>'+
+        '<td style="padding:3px 6px; text-align:right">'+o.n_grids+'</td>'+
+        '<td style="padding:3px 6px; text-align:right">'+stabStr+'</td>'+
+        '<td style="padding:3px 6px; font-size:0.6rem">'+symStr+'</td>'+
+        '<td style="padding:3px 6px; text-align:right">'+clueStr+'</td>';
+      tbody.appendChild(tr);
+    }
+    t7UpdateCount();
+  } catch(e) {
+    console.error('Failed to load orbits:', e);
+  }
+}
+
+function t7UpdateCount() {
+  var cbs = document.querySelectorAll('.t7-cb:checked');
+  document.getElementById('t7-sel-count').textContent = cbs.length + ' selected';
+}
+
+function t7SelectAll() {
+  document.querySelectorAll('.t7-cb').forEach(function(cb){ cb.checked = true; });
+  t7UpdateCount();
+}
+
+function t7SelectNone() {
+  document.querySelectorAll('.t7-cb').forEach(function(cb){ cb.checked = false; });
+  t7UpdateCount();
+}
+
+function t7SelectByStab() {
+  // Select 1 orbit per unique |Stab| value
+  document.querySelectorAll('.t7-cb').forEach(function(cb){ cb.checked = false; });
+  var seenStab = {};
+  for (var i = 0; i < t7Orbits.length; i++) {
+    var s = t7Orbits[i].stab_size;
+    if (s !== null && !(s in seenStab)) {
+      seenStab[s] = true;
+      var cb = document.querySelector('.t7-cb[data-hash="'+t7Orbits[i].hash+'"]');
+      if (cb) cb.checked = true;
+    }
+  }
+  t7UpdateCount();
+}
+
+async function startTask7Selected() {
+  var cbs = document.querySelectorAll('.t7-cb:checked');
+  var selected = [];
+  cbs.forEach(function(cb){ selected.push(cb.getAttribute('data-hash')); });
+  if (selected.length === 0) { alert('Select at least 1 orbit'); return; }
+  try {
+    await fetch('/api/start/task7', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({selected: selected})
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function startTask8() {
+  try {
+    await fetch('/api/start/task8', { method: 'POST' });
+  } catch(e) { console.error(e); }
+}
+
+function updateTask7(t) {
+  if (!t) return;
+  setStatus('task7', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task7').style.display='block';
+    document.getElementById('bar-task7').style.width=(p.percent||0)+'%';
+    document.getElementById('s7l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      (p.message || 'Working...');
+    document.getElementById('s7r').textContent=p.phase=='parallel' ? '16 workers' : ('Min: '+fmt(p.global_min||'?')+' clues');
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task7').style.display='block';
+    document.getElementById('bar-task7').style.width='100%';
+    document.getElementById('bar-task7').className='progress-bar-fill done';
+    document.getElementById('result-task7').style.display='block';
+    var dist = r.distribution ? Object.entries(r.distribution).sort(function(a,b){return a[0]-b[0]}).map(function(e){return e[0]+' clues: '+e[1];}).join(', ') : '';
+    document.getElementById('result-task7').innerHTML=
+      '<div class="result-row"><span class="result-label">Orbits analyzed</span><span>'+fmt(r.processed)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Minimum clues (Variant A)</span><span class="result-value">'+fmt(r.global_min)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Distribution</span><span style="font-size:0.7rem">'+dist+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>';
+  }
+}
+
+function updateTask8(t) {
+  if (!t) return;
+  setStatus('task8', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task8').style.display='block';
+    document.getElementById('bar-task8').style.width=(p.percent||0)+'%';
+    document.getElementById('s8l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      'Orbits: '+fmt(p.processed||0)+'/'+fmt(p.total||0);
+    document.getElementById('s8r').textContent='Last |Stab|: '+(p.last_stab||'?');
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task8').style.display='block';
+    document.getElementById('bar-task8').style.width='100%';
+    document.getElementById('bar-task8').className='progress-bar-fill done';
+    document.getElementById('result-task8').style.display='block';
+    var dist = r.stab_distribution ? Object.entries(r.stab_distribution).sort(function(a,b){return a[0]-b[0]}).map(function(e){return '|Stab|='+e[0]+': '+e[1];}).join(', ') : '';
+    var univ = r.universal_symmetries ? r.universal_symmetries.join(', ') : 'none';
+    var topTypes = '';
+    if (r.top_symmetry_types) {
+      topTypes = r.top_symmetry_types.slice(0,8).map(function(e){return e[0]+': '+e[1];}).join('<br>');
+    }
+    document.getElementById('result-task8').innerHTML=
+      '<div class="result-row"><span class="result-label">Orbits analyzed</span><span>'+fmt(r.processed)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Lower bound</span><span class="result-value">'+fmtSci(r.total_suirodoku_lower_bound)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Stab distribution</span><span style="font-size:0.7rem">'+dist+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Universal symmetries</span><span class="result-value" style="font-size:0.75rem">'+univ+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Top symmetry types</span><span style="font-size:0.65rem">'+topTypes+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>';
+  }
+}
+
+async function pollStatus() {
+  try {
+    var res = await fetch('/api/status');
+    var data = await res.json();
+    updateTask1(data.task1); updateTask2(data.task2); updateTask3(data.task3);
+    updateTask4(data.task4); updateTask5(data.task5); updateTask6(data.task6);
+    updateTask7(data.task7); updateTask8(data.task8); updateTask9(data.task9);
+    updateTask10Workers(data);
+    updateTask11Workers(data);
+    updateTask12Workers(data);
+    updateTask13Workers(data);
+    updateFooter(data);
+  } catch(e){}
+}
+
+function updateTask9(t) {
+  if (!t) return;
+  setStatus('task9', t.status);
+  var p = t.progress||{};
+  if (t.status==='running'||t.status==='paused') {
+    document.getElementById('progress-task9').style.display='block';
+    document.getElementById('bar-task9').style.width=(p.percent||0)+'%';
+    document.getElementById('s9l').innerHTML=
+      (t.status==='running'?'<span class="running-dot"></span>':'')+
+      'Orbits: '+fmt(p.processed||0)+'/'+fmt(p.total||0)+' — Merges: '+fmt(p.merges||0)+' — Self-dual: '+fmt(p.self_dual||0);
+    document.getElementById('s9r').textContent='Merged count: '+fmt(p.merged_count||'?');
+  }
+  if (t.status==='done' && t.result) {
+    var r=t.result;
+    document.getElementById('progress-task9').style.display='block';
+    document.getElementById('bar-task9').style.width='100%';
+    document.getElementById('bar-task9').className='progress-bar-fill done';
+    document.getElementById('result-task9').style.display='block';
+    document.getElementById('result-task9').innerHTML=
+      '<div class="result-row"><span class="result-label">Original orbits</span><span>'+fmt(r.total)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Merge pairs (σ↔τ)</span><span class="result-value">'+fmt(r.n_merges)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Self-dual orbits</span><span>'+fmt(r.self_dual)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Novel swaps (not in dataset)</span><span>'+fmt(r.novel_swaps)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Merged orbit count</span><span class="result-value">'+fmt(r.merged_orbit_count)+'</span></div>'+
+      '<div class="result-row"><span class="result-label">Time</span><span>'+r.elapsed+'s ('+(r.elapsed/60).toFixed(1)+' min)</span></div>';
+  }
+}
+
+var TASK_LABELS = {
+  task1:'Task 01 — Exact 4×4 count',
+  task2:'Task 02 — Orbit analysis',
+  task3:'Task 03 — Grid search 9×9',
+  task5:'Task 05 — Min clue 4×4',
+  task6:'Task 06 — Mate count',
+  task7:'Task 07 — Min clue 9×9',
+  task10:'Task 10 — Back-circulant',
+  task10_g1:'T10 P1a', task10_g2:'T10 P1b', task10_g3:'T10 P2a', task10_g4:'T10 P2b',
+  task10_g5:'T10 P3a', task10_g6:'T10 P3b', task10_g7:'T10 P4a', task10_g8:'T10 P4b',
+  task10_g9:'T10 P5a', task10_g10:'T10 P5b', task10_g11:'T10 P6a', task10_g12:'T10 P6b',
+  task10_g13:'T10 P7a', task10_g14:'T10 P7b', task10_g15:'T10 P8a', task10_g16:'T10 P8b',
+  task10_w1:'T10 C1', task10_w2:'T10 C2', task10_w3:'T10 C3', task10_w4:'T10 C4',
+  task10_w5:'T10 C5', task10_w6:'T10 C6', task10_w7:'T10 C7', task10_w8:'T10 C8',
+  task11:'Task 11 — Orbit Catalog',
+  task11_w1:'T11 W1', task11_w2:'T11 W2', task11_w3:'T11 W3', task11_w4:'T11 W4',
+  task11_w5:'T11 W5', task11_w6:'T11 W6', task11_w7:'T11 W7', task11_w8:'T11 W8',
+  task12:'Task 12 — Crystal Min Clues',
+  task12_w1:'T12 W1', task12_w2:'T12 W2', task12_w3:'T12 W3', task12_w4:'T12 W4',
+  task12_w5:'T12 W5', task12_w6:'T12 W6', task12_w7:'T12 W7', task12_w8:'T12 W8',
+  task13:'Task 13 — Stab 162',
+  task13_w1:'T13 C1', task13_w2:'T13 C2', task13_w3:'T13 C3', task13_w4:'T13 C4',
+  task13_w5:'T13 C5', task13_w6:'T13 C6', task13_w7:'T13 C7', task13_w8:'T13 C8',
+  task13_g1:'T13 P1a', task13_g2:'T13 P1b', task13_g3:'T13 P2a', task13_g4:'T13 P2b',
+  task13_g5:'T13 P3a', task13_g6:'T13 P3b', task13_g7:'T13 P4a', task13_g8:'T13 P4b',
+  task13_g9:'T13 P5a', task13_g10:'T13 P5b', task13_g11:'T13 P6a', task13_g12:'T13 P6b',
+  task13_g13:'T13 P7a', task13_g14:'T13 P7b', task13_g15:'T13 P8a', task13_g16:'T13 P8b'
+};
+function updateFooter(data) {
+  var parts = [];
+  for (var tid in data) {
+    var t = data[tid];
+    if (t.status === 'running') {
+      var p = t.progress || {};
+      var pct = p.percent != null ? p.percent + '%' : '';
+      var detail = '';
+      if (tid === 'task3') detail = ' — ' + fmt(p.found||0) + ' grids, ' + fmt(p.attempts||0) + '/' + fmt(window._task3LiveTarget||p.max_attempts||5000) + ' attempts';
+      else if (tid === 'task4') detail = ' — ' + fmt(p.n_orbits||0) + ' orbits';
+      else if (tid === 'task5') detail = ' — V1 min=' + fmt(p.global_min_v1||'?');
+      else if (tid === 'task6') detail = ' — ' + fmt(p.processed||0) + ' tested';
+      else if (tid === 'task7') detail = ' — min=' + fmt(p.global_min||'?') + ' clues, ' + fmt(p.processed||0) + '/' + fmt(p.total||0) + ' grids';
+      else if (tid === 'task8') detail = ' — ' + fmt(p.processed||0) + '/' + fmt(p.total||0) + ' orbits';
+      else if (tid === 'task9') detail = ' — ' + fmt(p.processed||0) + '/' + fmt(p.total||0) + ' orbits, ' + fmt(p.merges||0) + ' merges';
+      else if (tid.startsWith('task10')) detail = ' — ' + (p.phase||'working') + (p.current?' ('+p.current+')':'');
+      parts.push((TASK_LABELS[tid]||tid) + ' ' + pct + detail);
+    }
+  }
+  var dot = document.getElementById('footer-dot');
+  var txt = document.getElementById('footer-text');
+  if (parts.length > 0) {
+    dot.className = 'dot running';
+    txt.textContent = parts.join('  |  ');
+  } else {
+    dot.className = 'dot idle';
+    txt.textContent = 'Idle — no task running';
+  }
+}
+
+// --- Task 10 (Back-circulant: Generation G1-G8 + Catalog C1-C8) ---
+
+var T10_PROBE_DEFS = {
+  "standard": { label:"Standard (aucune symétrie)", desc:"Énumération exhaustive sans contrainte de symétrie sur la couche couleur" },
+  "r180": { label:"Rotation 180°", desc:"Seuls les mates dont la couche couleur a la symétrie rot180. Espace de recherche réduit ×2." },
+  "order3": { label:"Ordre 3 (cycle colonnes)", desc:"Cycle d'ordre 3 sur les colonnes : 0→1→2→0 dans chaque stack." },
+  "c3inv": { label:"C3 involution", desc:"Involution d'ordre 2 (classe C3), 18 éléments, 9 cellules fixes." },
+  "c4trans": { label:"C4 transposée", desc:"Involution transposée d'ordre 2 (classe C4), 18 éléments." },
+  "s162inv": { label:"Stab162 involution", desc:"Involution d'ordre 2 propre à Stab-162: swap bands 1↔2 + cols 1↔2 par stack. 9 cellules fixes, réduit ×2." },
+  "s162o3": { label:"Stab162 ordre 3", desc:"Cycle d'ordre 3 propre à Stab-162: stacks 0→1→2→0 (colonnes +3 mod 9). 27 orbites de taille 3, réduit ×3." }
+};
+var _t10ProbeData = null;
+
+function onT10GenProbeChange() {
+  var probe = document.getElementById('t10-gen-probe').value;
+  var info = T10_PROBE_DEFS[probe];
+  document.getElementById('t10-gen-probe-info').textContent = info ? info.desc : '';
+  document.getElementById('t10-gen-active-probe').textContent = probe;
+  loadTask10GenSummary(probe);
+}
+function getSelectedT10GenProbe() { var s = document.getElementById('t10-gen-probe'); return s ? s.value : 'standard'; }
+
+function onT10CatProbeChange() {
+  var probe = document.getElementById('t10-cat-probe').value;
+  var infoEl = document.getElementById('t10-cat-probe-info');
+  if (_t10ProbeData && _t10ProbeData[probe]) {
+    var pd = _t10ProbeData[probe];
+    infoEl.textContent = pd.description + ' — ' + pd.n_workers_with_data + '/16 workers, ' + fmt(pd.n_total_samples) + ' samples';
+    infoEl.style.display = pd.available ? 'block' : 'none';
+  } else { infoEl.style.display = 'none'; }
+  loadTask10CatSummary(probe);
+}
+function getSelectedT10CatProbe() { var s = document.getElementById('t10-cat-probe'); return s ? s.value : 'standard'; }
+
+async function refreshT10Probes() {
+  try {
+    var res = await fetch('/api/task10/probes');
+    _t10ProbeData = await res.json();
+    var catSel = document.getElementById('t10-cat-probe');
+    var currentVal = catSel.value;
+    catSel.innerHTML = '';
+    var probeKeys = ["standard","r180","order3","c3inv","c4trans","s162inv","s162o3"];
+    probeKeys.forEach(function(key) {
+      var opt = document.createElement('option');
+      opt.value = key;
+      var pd = _t10ProbeData[key];
+      if (pd) {
+        var status = pd.available ? '✅ '+pd.n_workers_done+'/16 done, '+fmt(pd.n_total_samples)+' samples' : '⬜ pas de données';
+        var catStatus = pd.catalog_exists ? ' [📊]' : '';
+        opt.textContent = pd.label + ' — ' + status + catStatus;
+        opt.disabled = !pd.available;
+        if (!pd.available) { opt.style.color='#555'; opt.style.fontStyle='italic'; }
+      } else {
+        opt.textContent = T10_PROBE_DEFS[key].label + ' — ⬜ pas de données';
+        opt.disabled = true; opt.style.color='#555';
+      }
+      catSel.appendChild(opt);
+    });
+    var chosen = catSel.querySelector('option[value="'+currentVal+'"]');
+    if (currentVal && chosen && !chosen.disabled) catSel.value = currentVal;
+    onT10CatProbeChange();
+  } catch(e) { console.error('refreshT10Probes:', e); }
+}
+
+async function loadTask10GenSummary(probe) {
+  if (!probe) probe = getSelectedT10GenProbe();
+  try {
+    var res = await fetch('/api/task10/summary/'+probe);
+    var data = await res.json();
+    if (data.total_found != null) document.getElementById('t10-found').textContent = fmt(data.total_found);
+    document.getElementById('t10-gen-active-probe').textContent = probe;
+  } catch(e) {}
+}
+
+async function loadTask10CatSummary(probe) {
+  if (!probe) probe = getSelectedT10CatProbe();
+  try {
+    var res = await fetch('/api/task10/catalog/'+probe);
+    var data = await res.json();
+    t10UpdateRecap(data);
+  } catch(e) {}
+}
+
+async function loadTask10() {
+  await refreshT10Probes();
+  loadTask10GenSummary();
+  loadTask10CatSummary();
+  t10UpdateAssignment();
+}
+
+var T10_CAT_FILES = [];
+for (var i=1; i<=16; i++) T10_CAT_FILES.push('G'+i);
+
+function t10UpdateAssignment() {
+  for (var w=1; w<=8; w++) {
+    var el = document.getElementById('t10w'+w+'f');
+    if (!el) continue;
+    var mine = [];
+    for (var idx=0; idx<T10_CAT_FILES.length; idx++) {
+      if (idx % 8 === (w-1)) mine.push(T10_CAT_FILES[idx]);
+    }
+    el.textContent = mine.length > 0 ? mine.join('+') : '—';
+  }
+}
+
+function t10UpdateRecap(r) {
+  if (r.n_orbits != null) document.getElementById('t10-n-orbits').textContent = fmt(r.n_orbits);
+  if (r.self_dual_count != null) document.getElementById('t10-self-dual').textContent = r.self_dual_count + '/' + (r.n_orbits||0);
+  if (r.top_stab) document.getElementById('t10-top-stab').textContent = fmt(r.top_stab);
+  if (r.total_grids) document.getElementById('t10-total-grids').textContent = fmt(r.total_grids);
+  if (r.stab_dist_total) {
+    var dist = '';
+    Object.keys(r.stab_dist_total).sort(function(a,b){return b-a;}).forEach(function(s) {
+      dist += '|Stab|='+s+':'+r.stab_dist_total[s]+' ';
+    });
+    document.getElementById('t10-stab-dist').textContent = dist;
+    document.getElementById('t10-stab-row').style.display = '';
+  }
+}
+
+// Task10 pair: P{p} = workers g{2p-1} (sub a) + g{2p} (sub b)
+async function startTask10P(p) {
+  var ga = 2*p-1, gb = 2*p;
+  var probe = getSelectedT10GenProbe();
+  try {
+    await fetch('/api/start/task10_g'+ga, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({n_target:0, probe_type:probe})});
+    await fetch('/api/start/task10_g'+gb, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({n_target:0, probe_type:probe})});
+  } catch(e) { alert('Start error: '+e); }
+}
+function stopTask10P(p) { stopTask('task10_g'+(2*p-1)); stopTask('task10_g'+(2*p)); }
+function resetTask10P(p) { resetTask('task10_g'+(2*p-1)); resetTask('task10_g'+(2*p)); }
+function startAllTask10P() { for(var i=1;i<=8;i++) startTask10P(i); }
+function stopAllTask10P() { for(var i=1;i<=16;i++) stopTask('task10_g'+i); }
+function resetAllTask10P() { if(confirm('Reset all T10 gen workers?')) for(var i=1;i<=16;i++) resetTask('task10_g'+i); }
+
+async function startTask10W(wid) {
+  var probe = getSelectedT10CatProbe();
+  try {
+    var res = await fetch('/api/start/task10_w'+wid, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({probe_types:[probe]})});
+    var data = await res.json();
+    if (!res.ok) alert('Start failed: '+(data.error||res.status));
+  } catch(e) { alert('Start error: '+e); }
+}
+function startAllTask10() { for(var i=1;i<=8;i++) startTask10W(i); }
+function stopAllTask10() { for(var i=1;i<=8;i++) stopTask('task10_w'+i); }
+function resetAllTask10() { if(confirm('Reset all T10 catalog workers?')) for(var i=1;i<=8;i++) resetTask('task10_w'+i); }
+function t10ExportCatalog() {
+  var probe = getSelectedT10CatProbe();
+  var fn = probe === 'standard' ? 'task10_catalog.json' : 'task10_catalog_'+probe+'.json';
+  window.open('/api/exports/'+fn, '_blank');
+}
+
+function updateTask10GenWorkers(data) {
+  var totalFound = 0;
+  for (var p=1; p<=8; p++) {
+    var ga = 'task10_g'+(2*p-1), gb = 'task10_g'+(2*p);
+    var ta = data[ga], tb = data[gb];
+    var statusEl = document.getElementById('status-task10_p'+p);
+    var el = document.getElementById('t10p'+p);
+    var infoEl = document.getElementById('t10p'+p+'i');
+    var stopBtn = document.getElementById('btn-stop-task10_p'+p);
+    // Combine status: if either running→running, both done→done, etc
+    var sa = ta?ta.status:'idle', sb = tb?tb.status:'idle';
+    var combined = (sa==='running'||sb==='running')?'running':(sa==='done'&&sb==='done')?'done':(sa==='paused'||sb==='paused')?'paused':(sa==='error'||sb==='error')?'error':'idle';
+    if (statusEl) {
+      statusEl.className='task-status '+combined;
+      statusEl.textContent=combined==='running'?'⏳':combined==='done'?'✅':combined==='paused'?'⏸':combined==='error'?'❌':'--';
+    }
+    if (el) el.className='mini-part'+(combined==='running'?' running':'')+(combined==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(combined!=='running');
+    // Combine n_found from both sub-workers
+    var pairFound = 0;
+    var msgs = [];
+    [ta,tb].forEach(function(t,idx){
+      if (!t) return;
+      var sub = idx===0?'a':'b';
+      if (t.status==='running') {
+        var pp = t.progress||{};
+        if (pp.n_found) pairFound += pp.n_found;
+        if (pp.rate) msgs.push(sub+':'+pp.rate+'/s');
+      }
+      if (t.status==='done' && t.result) {
+        pairFound += (t.result.n_found||0);
+        msgs.push(sub+'✅');
+      }
+      if (t.status==='paused' && t.result) pairFound += (t.result.n_found||0);
+    });
+    totalFound += pairFound;
+    if (infoEl) {
+      if (combined==='running') {
+        infoEl.textContent = fmt(pairFound)+' mates '+msgs.join(' ');
+      } else if (combined==='done') {
+        infoEl.textContent = fmt(pairFound)+' mates ✅';
+      } else if (combined==='paused') {
+        infoEl.textContent = '⏸ '+fmt(pairFound);
+      } else if (combined==='error') {
+        infoEl.textContent = 'ERROR'; infoEl.style.color='#e74c3c';
+      }
+    }
+  }
+  document.getElementById('t10-found').textContent = fmt(totalFound);
+}
+
+function updateTask10CatWorkers(data) {
+  for (var w=1; w<=8; w++) {
+    var tid = 'task10_w'+w;
+    var t = data[tid];
+    if (!t) continue;
+    var statusEl = document.getElementById('status-'+tid);
+    var el = document.getElementById('t10w'+w);
+    var infoEl = document.getElementById('t10w'+w+'i');
+    var stopBtn = document.getElementById('btn-stop-'+tid);
+    if (statusEl) {
+      statusEl.className='task-status '+t.status;
+      statusEl.textContent=t.status==='running'?'⏳':t.status==='done'?'✅':t.status==='paused'?'⏸':'--';
+    }
+    if (el) el.className='mini-part'+(t.status==='running'?' running':'')+(t.status==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(t.status!=='running');
+    var p = t.progress||{};
+    if (t.status==='running' && infoEl) {
+      infoEl.textContent = p.message ? p.message.substring(0, 45) : (p.phase||'...');
+    }
+    if (t.status==='done' && t.result && infoEl) {
+      infoEl.textContent = '+'+(t.result.n_new_orbits||0)+' new, '+(t.result.n_orbits||0)+' total';
+    }
+    if (t.status==='error' && infoEl) {
+      infoEl.textContent = (t.progress||{}).message || 'ERROR';
+      infoEl.style.color = '#e74c3c';
+    }
+  }
+  // Update recap from most recent worker result
+  for (var w=8; w>=1; w--) {
+    var t = data['task10_w'+w];
+    if (t && t.result && t.result.n_orbits) {
+      t10UpdateRecap(t.result);
+      break;
+    }
+  }
+}
+
+function updateTask10Workers(data) {
+  updateTask10GenWorkers(data);
+  updateTask10CatWorkers(data);
+}
+
+// --- Task 11 (8 workers, 1 master dropdown) ---
+
+var T11_FILES = {
+  '10a': ['back_circulant'],
+  '10e': ['c3_mates'],
+  '10f': ['c4_mates'],
+  '10g': ['P1a','P1b','P2a','P2b','P3a','P3b','P4a','P4b','P5a','P5b','P6a','P6b','P7a','P7b','P8a','P8b'],
+  '10i': ['P1a','P1b','P2a','P2b','P3a','P3b','P4a','P4b','P5a','P5b','P6a','P6b','P7a','P7b','P8a','P8b'],
+  '10': ['G1','G2','G3','G4','G5','G6','G7','G8','G9','G10','G11','G12','G13','G14','G15','G16']
+};
+
+function t11UpdateAssignment() {
+  var src = document.getElementById('t11-source').value;
+  var files = T11_FILES[src] || [];
+  for (var w=1; w<=8; w++) {
+    var el = document.getElementById('t11w'+w+'f');
+    if (!el) continue;
+    var mine = [];
+    for (var idx=0; idx<files.length; idx++) {
+      if (idx % 8 === (w-1)) mine.push(files[idx]);
+    }
+    el.textContent = mine.length > 0 ? mine.join('+') : '— idle —';
+    el.style.color = mine.length > 0 ? 'var(--purple)' : 'var(--muted)';
+  }
+}
+
+async function startTask11W(wid) {
+  var src = document.getElementById('t11-source').value;
+  try {
+    var res = await fetch('/api/start/task11_w'+wid, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({source: src})
+    });
+    var data = await res.json();
+    if (!res.ok) alert('Start failed: '+(data.error||res.status));
+  } catch(e) { alert('Start error: '+e); }
+}
+function startAllTask11() { for(var i=1;i<=8;i++) startTask11W(i); }
+function stopAllTask11() { for(var i=1;i<=8;i++) stopTask('task11_w'+i); }
+function resetAllTask11() { if(confirm('Reset all T11 workers?')) for(var i=1;i<=8;i++) resetTask('task11_w'+i); }
+
+function updateTask11Workers(data) {
+  for (var w=1; w<=8; w++) {
+    var tid = 'task11_w'+w;
+    var t = data[tid];
+    if (!t) continue;
+    var statusEl = document.getElementById('status-'+tid);
+    var el = document.getElementById('t11w'+w);
+    var infoEl = document.getElementById('t11w'+w+'i');
+    var stopBtn = document.getElementById('btn-stop-'+tid);
+    if (statusEl) {
+      statusEl.className='task-status '+t.status;
+      statusEl.textContent=t.status==='running'?'⏳':t.status==='done'?'✅':t.status==='paused'?'⏸':t.status==='error'?'❌':'--';
+    }
+    if (el) el.className='mini-part'+(t.status==='running'?' running':'')+(t.status==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(t.status!=='running');
+    var p = t.progress||{};
+    if (t.status==='running' && infoEl) {
+      infoEl.textContent = p.message ? p.message.substring(0, 45) : (p.phase||'...');
+    }
+    if (t.status==='done' && t.result && infoEl) {
+      infoEl.textContent = '+'+(t.result.n_new_orbits||0)+' new, '+(t.result.n_orbits||0)+' total';
+    }
+    if (t.status==='paused' && t.result && infoEl) {
+      infoEl.textContent = '⏸ +'+(t.result.n_new_orbits||0)+' new';
+    }
+    if (t.status==='error' && infoEl) {
+      infoEl.textContent = (t.progress||{}).message || (t.result||{}).message || 'ERROR';
+      infoEl.style.color = '#e74c3c';
+    }
+  }
+  // Update recap from worker results
+  for (var w=8; w>=1; w--) {
+    var t = data['task11_w'+w];
+    if (t && t.result && t.result.n_orbits) {
+      var r = t.result;
+      document.getElementById('t11-n-orbits').textContent = fmt(r.n_orbits);
+      if (r.self_dual_count != null) document.getElementById('t11-self-dual').textContent = r.self_dual_count + '/' + r.n_orbits;
+      if (r.top_stab) document.getElementById('t11-top-stab').textContent = fmt(r.top_stab);
+      if (r.sources_processed) {
+        var srcs = Object.keys(r.sources_processed);
+        var parts = srcs.map(function(s) { return s + ' ('+fmt(r.sources_processed[s])+')'; });
+        document.getElementById('t11-sources').textContent = parts.join(', ') || '—';
+      }
+      if (r.stab_dist_total) {
+        var dist = '';
+        Object.keys(r.stab_dist_total).sort(function(a,b){return b-a;}).forEach(function(s) {
+          dist += '|Stab|='+s+':'+r.stab_dist_total[s]+' ';
+        });
+        document.getElementById('t11-stab-dist').textContent = dist;
+        document.getElementById('t11-stab-row').style.display = '';
+      }
+      break;
+    }
+  }
+}
+
+async function loadTask11Catalog() {
+  try {
+    var res = await fetch('/api/task11/catalog');
+    var data = await res.json();
+    if (data.n_orbits != null) document.getElementById('t11-n-orbits').textContent = fmt(data.n_orbits);
+    if (data.self_dual_count != null) document.getElementById('t11-self-dual').textContent = data.self_dual_count + '/' + (data.n_orbits||0);
+    if (data.top_stab) document.getElementById('t11-top-stab').textContent = fmt(data.top_stab);
+    if (data.sources_processed) {
+      var srcs = Object.keys(data.sources_processed);
+      var parts = srcs.map(function(s) { return s + ' ('+fmt(data.sources_processed[s])+')'; });
+      document.getElementById('t11-sources').textContent = parts.join(', ') || '—';
+    }
+    if (data.stab_dist_total) {
+      var dist = '';
+      Object.keys(data.stab_dist_total).sort(function(a,b){return b-a;}).forEach(function(s) {
+        dist += '|Stab|='+s+':'+data.stab_dist_total[s]+' ';
+      });
+      document.getElementById('t11-stab-dist').textContent = dist;
+      document.getElementById('t11-stab-row').style.display = '';
+    }
+  } catch(e) {}
+  t11UpdateAssignment();
+}
+
+// --- Task 12 (Crystal Grid min clues) ---
+async function loadTask12() {
+  try {
+    var res = await fetch('/api/task12/summary');
+    var data = await res.json();
+    t12UpdateRecap(data);
+  } catch(e) {}
+}
+
+function t12UpdateRecap(data) {
+  if (data.global_min && data.global_min < 81) {
+    document.getElementById('t12-best').textContent = data.global_min + ' clues';
+  }
+  if (data.total_shuffles != null) {
+    document.getElementById('t12-total-shuffles').textContent = fmt(data.total_shuffles);
+  }
+  if (data.distribution) {
+    var keys = Object.keys(data.distribution).sort(function(a,b){return a-b;});
+    var parts = keys.map(function(k){ return k+':'+data.distribution[k]; });
+    document.getElementById('t12-dist').textContent = parts.join('  ') || '—';
+  }
+}
+
+async function startTask12W(wid) {
+  try {
+    var res = await fetch('/api/start/task12_w'+wid, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({n_shuffles:50})});
+    var data = await res.json();
+    if (!res.ok) alert('Start failed: '+(data.error||res.status));
+  } catch(e) { alert('Start error: '+e); }
+}
+function startAllTask12() { for(var i=1;i<=8;i++) startTask12W(i); }
+function stopAllTask12() { for(var i=1;i<=8;i++) stopTask('task12_w'+i); }
+function resetAllTask12() { if(confirm('Reset all T12 workers?')) for(var i=1;i<=8;i++) resetTask('task12_w'+i); }
+
+function updateTask12Workers(data) {
+  var bestMin = 81;
+  var totalShuffles = 0;
+  var mergedDist = {};
+  for (var w=1; w<=8; w++) {
+    var tid = 'task12_w'+w;
+    var t = data[tid];
+    if (!t) continue;
+    var statusEl = document.getElementById('status-'+tid);
+    var el = document.getElementById('t12w'+w);
+    var infoEl = document.getElementById('t12w'+w+'i');
+    var stopBtn = document.getElementById('btn-stop-'+tid);
+    if (statusEl) {
+      statusEl.className='task-status '+t.status;
+      statusEl.textContent=t.status==='running'?'⏳':t.status==='done'?'✅':t.status==='paused'?'⏸':'--';
+    }
+    if (el) el.className='mini-part'+(t.status==='running'?' running':'')+(t.status==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(t.status!=='running');
+    if (t.status==='running' && infoEl) {
+      var p = t.progress||{};
+      infoEl.textContent = p.message ? p.message.substring(0,45) : '...';
+    }
+    if (t.status==='done' && t.result && infoEl) {
+      infoEl.textContent = 'min='+(t.result.global_min||'?')+', '+(t.result.n_shuffles_done||0)+' sh';
+    }
+    if (t.status==='paused' && t.result && infoEl) {
+      infoEl.textContent = '⏸ min='+(t.result.global_min||'?');
+    }
+    if (t.status==='error' && infoEl) {
+      infoEl.textContent = (t.progress||{}).message || (t.result||{}).message || 'ERROR';
+      infoEl.style.color = '#e74c3c';
+    }
+    // Aggregate for recap
+    if (t.result) {
+      var gm = t.result.global_min;
+      if (gm && gm < bestMin) bestMin = gm;
+      totalShuffles += (t.result.n_shuffles_done||0);
+      var dist = t.result.distribution || {};
+      for (var k in dist) { mergedDist[k] = (mergedDist[k]||0) + dist[k]; }
+    }
+  }
+  if (bestMin < 81) document.getElementById('t12-best').textContent = bestMin + ' clues';
+  if (totalShuffles > 0) document.getElementById('t12-total-shuffles').textContent = fmt(totalShuffles);
+  if (Object.keys(mergedDist).length > 0) {
+    var keys = Object.keys(mergedDist).sort(function(a,b){return a-b;});
+    document.getElementById('t12-dist').textContent = keys.map(function(k){return k+':'+mergedDist[k];}).join('  ');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Task 13 — Probe-aware generation + catalog
+// ═══════════════════════════════════════════════════════
+
+var T13_PROBE_DEFS = {
+  "standard": { label:"Standard (aucune symétrie)", desc:"Énumération exhaustive sans contrainte de symétrie sur la couche couleur" },
+  "r180": { label:"Rotation 180°", desc:"Seuls les mates dont la couche couleur a la symétrie rot180. Espace de recherche réduit ×2." },
+  "order3": { label:"Ordre 3 (cycle colonnes)", desc:"Cycle d'ordre 3 sur les colonnes : 0→1→2→0 dans chaque stack." },
+  "c3inv": { label:"C3 involution", desc:"Involution d'ordre 2 (classe C3), 18 éléments, 9 cellules fixes." },
+  "c4trans": { label:"C4 transposée", desc:"Involution transposée d'ordre 2 (classe C4), 18 éléments." },
+  "s162inv": { label:"Stab162 involution", desc:"Involution d'ordre 2 propre à Stab-162: swap bands 1↔2 + cols 1↔2 par stack. 9 cellules fixes, réduit ×2." },
+  "s162o3": { label:"Stab162 ordre 3", desc:"Cycle d'ordre 3 propre à Stab-162: stacks 0→1→2→0 (colonnes +3 mod 9). 27 orbites de taille 3, réduit ×3." }
+};
+var _t13ProbeData = null;
+
+function onT13GenProbeChange() {
+  var probe = document.getElementById('t13-gen-probe').value;
+  var info = T13_PROBE_DEFS[probe];
+  document.getElementById('t13-gen-probe-info').textContent = info ? info.desc : '';
+  document.getElementById('t13-gen-active-probe').textContent = probe;
+  loadTask13GenSummary(probe);
+}
+function getSelectedGenProbe() { var s = document.getElementById('t13-gen-probe'); return s ? s.value : 'standard'; }
+
+function onT13CatProbeChange() {
+  var probe = document.getElementById('t13-cat-probe').value;
+  var infoEl = document.getElementById('t13-cat-probe-info');
+  if (_t13ProbeData && _t13ProbeData[probe]) {
+    var pd = _t13ProbeData[probe];
+    infoEl.textContent = pd.description + ' — ' + pd.n_workers_with_data + '/16 workers, ' + fmt(pd.n_total_samples) + ' samples';
+    infoEl.style.display = pd.available ? 'block' : 'none';
+  } else { infoEl.style.display = 'none'; }
+  loadTask13CatSummary(probe);
+}
+function getSelectedCatProbe() { var s = document.getElementById('t13-cat-probe'); return s ? s.value : 'standard'; }
+
+async function refreshT13Probes() {
+  try {
+    var res = await fetch('/api/task13/probes');
+    _t13ProbeData = await res.json();
+    var catSel = document.getElementById('t13-cat-probe');
+    var currentVal = catSel.value;
+    catSel.innerHTML = '';
+    var probeKeys = ["standard","r180","order3","c3inv","c4trans","s162inv","s162o3"];
+    probeKeys.forEach(function(key) {
+      var opt = document.createElement('option');
+      opt.value = key;
+      var pd = _t13ProbeData[key];
+      if (pd) {
+        var status = pd.available ? '✅ '+pd.n_workers_done+'/16 done, '+fmt(pd.n_total_samples)+' samples' : '⬜ pas de données';
+        var catStatus = pd.catalog_exists ? ' [📊]' : '';
+        opt.textContent = pd.label + ' — ' + status + catStatus;
+        opt.disabled = !pd.available;
+        if (!pd.available) { opt.style.color='#555'; opt.style.fontStyle='italic'; }
+      } else {
+        opt.textContent = T13_PROBE_DEFS[key].label + ' — ⬜ pas de données';
+        opt.disabled = true; opt.style.color='#555';
+      }
+      catSel.appendChild(opt);
+    });
+    var chosen = catSel.querySelector('option[value="'+currentVal+'"]');
+    if (currentVal && chosen && !chosen.disabled) catSel.value = currentVal;
+    onT13CatProbeChange();
+  } catch(e) { console.error('refreshT13Probes:', e); }
+}
+
+async function loadTask13GenSummary(probe) {
+  if (!probe) probe = getSelectedGenProbe();
+  try {
+    var res = await fetch('/api/task13/summary/'+probe);
+    var data = await res.json();
+    if (data.total_found != null) document.getElementById('t13-found').textContent = fmt(data.total_found);
+    document.getElementById('t13-gen-active-probe').textContent = probe;
+  } catch(e) {}
+}
+
+async function loadTask13CatSummary(probe) {
+  if (!probe) probe = getSelectedCatProbe();
+  try {
+    var res = await fetch('/api/task13/catalog/'+probe);
+    var data = await res.json();
+    t13UpdateRecap(data);
+  } catch(e) {}
+}
+
+async function loadTask13() {
+  await refreshT13Probes();
+  loadTask13GenSummary();
+  loadTask13CatSummary();
+  t13UpdateAssignment();
+}
+
+var T13_CAT_FILES = [];
+for (var i=1; i<=16; i++) T13_CAT_FILES.push('G'+i);
+
+function t13UpdateAssignment() {
+  for (var w=1; w<=8; w++) {
+    var el = document.getElementById('t13w'+w+'f');
+    if (!el) continue;
+    var mine = [];
+    for (var idx=0; idx<T13_CAT_FILES.length; idx++) {
+      if (idx % 8 === (w-1)) mine.push(T13_CAT_FILES[idx]);
+    }
+    el.textContent = mine.length > 0 ? mine.join('+') : '—';
+  }
+}
+
+function t13UpdateRecap(data) {
+  if (data.n_orbits != null) document.getElementById('t13-n-orbits').textContent = fmt(data.n_orbits);
+  if (data.self_dual_count != null) document.getElementById('t13-self-dual').textContent = data.self_dual_count + '/' + (data.n_orbits||0);
+  if (data.top_stab) document.getElementById('t13-top-stab').textContent = fmt(data.top_stab);
+  if (data.total_grids != null) document.getElementById('t13-total-grids').textContent = fmt(data.total_grids);
+  if (data.stab_dist_total) {
+    var dist = '';
+    Object.keys(data.stab_dist_total).sort(function(a,b){return b-a;}).forEach(function(s) {
+      dist += '|Stab|='+s+':'+data.stab_dist_total[s]+' ';
+    });
+    document.getElementById('t13-stab-dist').textContent = dist;
+    document.getElementById('t13-stab-row').style.display = '';
+  }
+}
+
+// --- Generation workers (G1-G8) ---
+// Task13 pair: P{p} = workers g{2p-1} (sub a) + g{2p} (sub b)
+async function startTask13P(p) {
+  var ga = 2*p-1, gb = 2*p;
+  var probe = getSelectedGenProbe();
+  try {
+    await fetch('/api/start/task13_g'+ga, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({n_target:0, probe_type:probe})});
+    await fetch('/api/start/task13_g'+gb, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({n_target:0, probe_type:probe})});
+  } catch(e) { alert('Start error: '+e); }
+}
+function stopTask13P(p) { stopTask('task13_g'+(2*p-1)); stopTask('task13_g'+(2*p)); }
+function resetTask13P(p) { resetTask('task13_g'+(2*p-1)); resetTask('task13_g'+(2*p)); }
+function startAllTask13P() { for(var i=1;i<=8;i++) startTask13P(i); }
+function stopAllTask13P() { for(var i=1;i<=16;i++) stopTask('task13_g'+i); }
+function resetAllTask13P() { if(confirm('Reset all T13 gen workers?')) for(var i=1;i<=16;i++) resetTask('task13_g'+i); }
+
+function updateTask13GenWorkers(data) {
+  var totalFound = 0;
+  for (var p=1; p<=8; p++) {
+    var ga = 'task13_g'+(2*p-1), gb = 'task13_g'+(2*p);
+    var ta = data[ga], tb = data[gb];
+    var statusEl = document.getElementById('status-task13_p'+p);
+    var el = document.getElementById('t13p'+p);
+    var infoEl = document.getElementById('t13p'+p+'i');
+    var stopBtn = document.getElementById('btn-stop-task13_p'+p);
+    var sa = ta?ta.status:'idle', sb = tb?tb.status:'idle';
+    var combined = (sa==='running'||sb==='running')?'running':(sa==='done'&&sb==='done')?'done':(sa==='paused'||sb==='paused')?'paused':(sa==='error'||sb==='error')?'error':'idle';
+    if (statusEl) {
+      statusEl.className='task-status '+combined;
+      statusEl.textContent=combined==='running'?'⏳':combined==='done'?'✅':combined==='paused'?'⏸':combined==='error'?'❌':'--';
+    }
+    if (el) el.className='mini-part'+(combined==='running'?' running':'')+(combined==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(combined!=='running');
+    var pairFound = 0;
+    var msgs = [];
+    [ta,tb].forEach(function(t,idx){
+      if (!t) return;
+      var sub = idx===0?'a':'b';
+      if (t.status==='running') {
+        var pp = t.progress||{};
+        if (pp.n_found) pairFound += pp.n_found;
+        if (pp.rate) msgs.push(sub+':'+pp.rate+'/s');
+      }
+      if (t.status==='done' && t.result) {
+        pairFound += (t.result.n_found||0);
+        msgs.push(sub+'✅');
+      }
+      if (t.status==='paused' && t.result) pairFound += (t.result.n_found||0);
+    });
+    totalFound += pairFound;
+    if (infoEl) {
+      if (combined==='running') {
+        infoEl.textContent = fmt(pairFound)+' mates '+msgs.join(' ');
+      } else if (combined==='done') {
+        infoEl.textContent = fmt(pairFound)+' mates ✅';
+      } else if (combined==='paused') {
+        infoEl.textContent = '⏸ '+fmt(pairFound);
+      } else if (combined==='error') {
+        infoEl.textContent = 'ERROR'; infoEl.style.color='#e74c3c';
+      }
+    }
+  }
+  document.getElementById('t13-found').textContent = fmt(totalFound);
+}
+
+// --- Catalog workers (C1-C8) ---
+async function startTask13W(wid) {
+  var probe = getSelectedCatProbe();
+  try {
+    var res = await fetch('/api/start/task13_w'+wid, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({probe_types:[probe]})});
+    var data = await res.json();
+    if (!res.ok) alert('Start failed: '+(data.error||res.status));
+  } catch(e) { alert('Start error: '+e); }
+}
+function startAllTask13() { for(var i=1;i<=8;i++) startTask13W(i); }
+function stopAllTask13() { for(var i=1;i<=8;i++) stopTask('task13_w'+i); }
+function resetAllTask13() { if(confirm('Reset all T13 cat workers?')) for(var i=1;i<=8;i++) resetTask('task13_w'+i); }
+function t13ExportCatalog() {
+  var probe = getSelectedCatProbe();
+  var fn = probe === 'standard' ? 'task13_catalog.json' : 'task13_catalog_'+probe+'.json';
+  window.open('/api/exports/'+fn, '_blank');
+}
+
+function updateTask13Workers(data) {
+  updateTask13GenWorkers(data);
+  for (var w=1; w<=8; w++) {
+    var tid = 'task13_w'+w;
+    var t = data[tid];
+    if (!t) continue;
+    var statusEl = document.getElementById('status-'+tid);
+    var el = document.getElementById('t13w'+w);
+    var infoEl = document.getElementById('t13w'+w+'i');
+    var stopBtn = document.getElementById('btn-stop-'+tid);
+    if (statusEl) {
+      statusEl.className='task-status '+t.status;
+      statusEl.textContent=t.status==='running'?'⏳':t.status==='done'?'✅':t.status==='paused'?'⏸':'--';
+    }
+    if (el) el.className='mini-part'+(t.status==='running'?' running':'')+(t.status==='done'?' done':'');
+    if (stopBtn) stopBtn.disabled=(t.status!=='running');
+    var p = t.progress||{};
+    if (t.status==='running' && infoEl) {
+      infoEl.textContent = p.message ? p.message.substring(0, 45) : (p.phase||'...');
+    }
+    if (t.status==='done' && t.result && infoEl) {
+      infoEl.textContent = '+'+(t.result.n_new_orbits||0)+' new, '+(t.result.n_orbits||0)+' total';
+    }
+    if (t.status==='error' && infoEl) {
+      infoEl.textContent = (t.progress||{}).message || (t.result||{}).message || 'ERROR';
+      infoEl.style.color = '#e74c3c';
+    }
+  }
+  for (var w=8; w>=1; w--) {
+    var t = data['task13_w'+w];
+    if (t && t.result && t.result.n_orbits) {
+      t13UpdateRecap(t.result);
+      break;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Perf Chart — Generation performance + ETA
+// ═══════════════════════════════════════════════════════
+
+var _perfData = {};
+var PERF_COLORS = [
+  '#22d3ee','#a78bfa','#f472b6','#34d399','#fb923c','#60a5fa',
+  '#facc15','#f87171','#2dd4bf','#c084fc','#4ade80','#fbbf24',
+  '#38bdf8','#e879f9','#a3e635','#fb7185'
+];
+
+function onPerfTaskChange() {
+  var task = document.getElementById('perf-task').value;
+  var probeWrap = document.getElementById('perf-probe-wrap');
+  probeWrap.style.display = (task === 'task13' || task === 'task10') ? '' : 'none';
+  loadPerfData();
+}
+
+function loadPerfData() {
+  var noData = document.getElementById('perf-no-data');
+  var probe = document.getElementById('perf-probe').value || 'standard';
+  fetch('/api/perf?probe=' + probe).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(data) {
+    _perfData = data;
+    // Update probe selector: mark which probes have data
+    var task = document.getElementById('perf-task').value;
+    var availProbes = data[task + '_probes_with_perf'] || [];
+    var probeSel = document.getElementById('perf-probe');
+    for (var i = 0; i < probeSel.options.length; i++) {
+      var opt = probeSel.options[i];
+      var has = availProbes.indexOf(opt.value) >= 0;
+      opt.textContent = opt.value === 'standard' ? 'Standard' :
+        opt.value === 'r180' ? 'Rotation 180°' :
+        opt.value === 'order3' ? 'Ordre 3' :
+        opt.value === 'c3inv' ? 'C3 involution' :
+        opt.value === 'c4trans' ? 'C4 transposée' :
+        opt.value === 's162inv' ? 'Stab162 involution' :
+        opt.value === 's162o3' ? 'Stab162 ordre 3' : opt.value;
+      if (has) opt.textContent += ' ✅';
+    }
+    drawPerfChart();
+  }).catch(function(e) {
+    console.error('Perf fetch error:', e);
+    _perfData = {};
+    noData.style.display = 'block';
+    document.getElementById('perf-canvas').style.display = 'none';
+    document.getElementById('perf-chart-container').style.display = 'none';
+    document.getElementById('perf-eta').innerHTML =
+      '<span style="color:var(--red);">Erreur: ' + e.message + '</span> — ' +
+      'Vérifie que app.py est redémarré et qu\'un worker G a tourné ≥1 min.';
+  });
+}
+
+function drawPerfChart() {
+  var task = document.getElementById('perf-task').value;
+  var mode = document.getElementById('perf-mode').value;
+  var workers = (_perfData[task] || {});
+  var wKeys = Object.keys(workers).sort(function(a,b){
+    return parseInt(a.replace('G','')) - parseInt(b.replace('G',''));
+  });
+
+  var noData = document.getElementById('perf-no-data');
+  var canvas = document.getElementById('perf-canvas');
+  var chartBox = document.getElementById('perf-chart-container');
+  if (wKeys.length === 0) {
+    noData.style.display = 'block';
+    chartBox.style.display = 'none';
+    document.getElementById('perf-eta').textContent = '';
+    document.getElementById('perf-legend').innerHTML = '';
+    return;
+  }
+  noData.style.display = 'none';
+  chartBox.style.display = 'block';
+  canvas.style.display = 'block';
+
+  var ctx = canvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.scale(dpr, dpr);
+  var W = rect.width, H = rect.height;
+  var pad = {l:65, r:20, t:16, b:28};
+  var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+
+  // Collect all data points
+  var allT = [], allV = [];
+  wKeys.forEach(function(wk) {
+    workers[wk].forEach(function(p) {
+      allT.push(p.t);
+      if (mode === 'rate') {
+        allV.push(p.rate_interval > 0 ? p.rate_interval : (p.rate > 0 ? p.rate : 0.1));
+      } else {
+        allV.push(p.n > 0 ? p.n : 1);
+      }
+    });
+  });
+
+  if (allT.length === 0) return;
+
+  var maxT = Math.max.apply(null, allT);
+  var minV = Math.max(1, Math.min.apply(null, allV));
+  var maxV = Math.max.apply(null, allV);
+  var useLinear = (mode === 'rate');
+
+  // Log scale bounds (cumul mode)
+  var logMin = Math.floor(Math.log10(minV));
+  var logMax = Math.ceil(Math.log10(Math.max(maxV, minV * 10)));
+  if (logMax <= logMin) logMax = logMin + 1;
+
+  // Linear scale bounds (rate mode) — 10% padding below min, 15% above max
+  var linMin = Math.max(0, minV * 0.85);
+  var linMax = maxV * 1.15;
+  // Round to nice numbers
+  var linRange = linMax - linMin;
+  var linStep = Math.pow(10, Math.floor(Math.log10(linRange / 4)));
+  if (linRange / linStep > 8) linStep *= 2;
+  else if (linRange / linStep < 3) linStep /= 2;
+  linMin = Math.floor(linMin / linStep) * linStep;
+  linMax = Math.ceil(linMax / linStep) * linStep;
+  if (linMin === linMax) linMax = linMin + linStep;
+
+  function xPos(t) { return pad.l + (t / maxT) * cw; }
+  function yPos(v) {
+    if (useLinear) {
+      var frac = (v - linMin) / (linMax - linMin);
+      return pad.t + ch * (1 - Math.max(0, Math.min(1, frac)));
+    }
+    if (v <= 0) v = 1;
+    var logV = Math.log10(v);
+    var frac = (logV - logMin) / (logMax - logMin);
+    return pad.t + ch * (1 - frac);
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#475569';
+  ctx.font = '10px JetBrains Mono';
+  ctx.textAlign = 'right';
+
+  if (useLinear) {
+    // Linear grid lines for rate mode
+    for (var lv = linMin; lv <= linMax + 0.001; lv += linStep) {
+      var y = yPos(lv);
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke();
+      var label = lv >= 10000 ? (lv/1000).toFixed(0) + 'k' : Number(Math.round(lv)).toLocaleString('en-US');
+      ctx.fillStyle = '#475569';
+      ctx.fillText(label, pad.l - 8, y + 3);
+    }
+  } else {
+    // Log grid lines for cumul mode
+    for (var exp = logMin; exp <= logMax; exp++) {
+      var y = yPos(Math.pow(10, exp));
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke();
+      var label = exp >= 9 ? '10^' + exp : Number(Math.pow(10, exp)).toLocaleString('en-US');
+      ctx.fillText(label, pad.l - 8, y + 3);
+      if (exp < logMax) {
+        [2, 5].forEach(function(m) {
+          var yy = yPos(m * Math.pow(10, exp));
+          ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+          ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(pad.l + cw, yy); ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        });
+      }
+    }
+  }
+
+  // Vertical time grid
+  var tSteps = [1, 2, 5, 10, 20, 50, 100];
+  var tStepH = 1;
+  for (var s = 0; s < tSteps.length; s++) {
+    if (maxT / 3600 / tSteps[s] < 8) { tStepH = tSteps[s]; break; }
+  }
+  ctx.textAlign = 'center';
+  for (var h = 0; h <= maxT / 3600; h += tStepH) {
+    var x = xPos(h * 3600);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ch); ctx.stroke();
+    ctx.fillStyle = '#475569'; ctx.font = '9px JetBrains Mono';
+    ctx.fillText(h + 'h', x, pad.t + ch + 14);
+  }
+
+  // Draw worker lines
+  var legend = document.getElementById('perf-legend');
+  legend.innerHTML = '';
+  wKeys.forEach(function(wk, wi) {
+    var pts = workers[wk];
+    if (pts.length < 1) return;
+    var color = PERF_COLORS[wi % PERF_COLORS.length];
+
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.7;
+    pts.forEach(function(p, i) {
+      var v = mode === 'rate' ? (p.rate_interval > 0 ? p.rate_interval : (p.rate > 0 ? p.rate : 0.1)) : (p.n > 0 ? p.n : 1);
+      var x = xPos(p.t), y = yPos(v);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Dots
+    ctx.fillStyle = color;
+    pts.forEach(function(p) {
+      var v = mode === 'rate' ? (p.rate_interval > 0 ? p.rate_interval : (p.rate > 0 ? p.rate : 0.1)) : (p.n > 0 ? p.n : 1);
+      ctx.beginPath(); ctx.arc(xPos(p.t), yPos(v), 2.5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    legend.innerHTML += '<span style="color:' + color + ';">● ' + wk + '</span>';
+  });
+
+  // ── Trend line + ETA (cumul mode only) ──
+  if (mode === 'cumul') {
+    // Collect combined: sum all workers' latest n at each unique time
+    // Simpler: average rate across all workers
+    var totalGrids = 0, totalTime = 0, nWorkers = 0;
+    wKeys.forEach(function(wk) {
+      var pts = workers[wk];
+      if (pts.length < 2) return;
+      var last = pts[pts.length - 1];
+      var first = pts[0];
+      if (last.t > first.t && last.n > 0) {
+        totalGrids += last.n;
+        totalTime += last.t;
+        nWorkers++;
+      }
+    });
+
+    if (nWorkers > 0 && totalTime > 0) {
+      // Average rate per worker (grids/s/worker)
+      var avgRatePerWorker = totalGrids / totalTime;
+      // Combined rate if all 16 workers run simultaneously
+      var combinedRate = avgRatePerWorker;
+
+      // Draw trend line from (0,1) extending to maxT * 1.3
+      var tEnd = maxT * 1.3;
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
+
+      var nSteps = 100;
+      for (var i = 0; i <= nSteps; i++) {
+        var t = (i / nSteps) * tEnd;
+        var projected = combinedRate * t;
+        if (projected < 1) projected = 1;
+        var x = pad.l + (t / (tEnd)) * cw;
+        var y = yPos(projected);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '10px JetBrains Mono';
+      ctx.textAlign = 'left';
+      var labelX = pad.l + cw * 0.7;
+      var labelY = yPos(combinedRate * tEnd * 0.7);
+      ctx.fillText('trend: ' + Math.round(combinedRate) + '/s', labelX, labelY - 8);
+
+      // ETA calculation
+      // Sum all workers' current n, figure out remaining
+      var sumN = 0, maxElapsed = 0;
+      wKeys.forEach(function(wk) {
+        var pts = workers[wk];
+        if (pts.length > 0) {
+          var last = pts[pts.length - 1];
+          sumN += last.n;
+          if (last.t > maxElapsed) maxElapsed = last.t;
+        }
+      });
+
+      var etaEl = document.getElementById('perf-eta');
+      var rateStr = Math.round(combinedRate).toLocaleString('en-US');
+      var sumStr = sumN.toLocaleString('en-US');
+      var html = '<span style="color:var(--accent);">' + nWorkers + ' workers</span> actifs — ' +
+        '<span style="color:var(--green);">' + sumStr + '</span> grilles — ' +
+        'débit moyen: <span style="color:var(--accent);">' + rateStr + ' /s</span> par worker';
+
+      // If we have task summary data with total expected
+      if (maxElapsed > 0 && combinedRate > 0) {
+        var elapsedH = (maxElapsed / 3600).toFixed(1);
+        html += ' — elapsed: <span style="color:var(--orange);">' + elapsedH + 'h</span>';
+
+        // Rough ETA: extrapolate per worker. Each worker is independent.
+        // Total grids = 16 × avg_per_worker at completion
+        // If a worker does R grids/s, to enumerate all its partition, time = (partition_total / R)
+        // We don't know partition_total, but we can estimate from current rate × elapsed = fraction done
+        // Actually, without knowing the total, we can't compute ETA. Show rate only.
+        // But if any worker is "final:true" (done), we can extrapolate for the rest.
+        var nDone = 0, nRunning = 0, doneTotal = 0, doneTime = 0;
+        wKeys.forEach(function(wk) {
+          var pts = workers[wk];
+          if (pts.length > 0) {
+            var last = pts[pts.length - 1];
+            if (last.final) {
+              nDone++; doneTotal += last.n; doneTime += last.t;
+            } else {
+              nRunning++;
+            }
+          }
+        });
+
+        if (nDone > 0) {
+          var avgPartitionSize = doneTotal / nDone;
+          var avgPartitionTime = doneTime / nDone;
+          var estimatedTotal = avgPartitionSize * wKeys.length;
+          var remaining = estimatedTotal - sumN;
+          if (remaining > 0 && combinedRate > 0) {
+            var etaSec = remaining / (nRunning * combinedRate / nWorkers);
+            var etaH = (etaSec / 3600).toFixed(1);
+            html += ' — <b style="color:#facc15;">ETA ≈ ' + etaH + 'h</b>';
+            html += ' (total estimé: ' + estimatedTotal.toLocaleString('en-US') + ')';
+          } else if (remaining <= 0) {
+            html += ' — <b style="color:var(--green);">Terminé ✓</b>';
+          }
+        }
+      }
+
+      etaEl.innerHTML = html;
+    }
+  } else {
+    // Rate mode — linear regression trend line
+    var allPts = [];
+    wKeys.forEach(function(wk) {
+      workers[wk].forEach(function(p) {
+        if (p.rate_interval > 0) allPts.push({t: p.t, r: p.rate_interval});
+        else if (p.rate > 0) allPts.push({t: p.t, r: p.rate});
+      });
+    });
+
+    if (allPts.length > 2) {
+      // Linear regression: rate = a*t + b
+      var n = allPts.length;
+      var sumT = 0, sumR = 0, sumTT = 0, sumTR = 0;
+      for (var i = 0; i < n; i++) {
+        sumT += allPts[i].t; sumR += allPts[i].r;
+        sumTT += allPts[i].t * allPts[i].t;
+        sumTR += allPts[i].t * allPts[i].r;
+      }
+      var a = (n * sumTR - sumT * sumR) / (n * sumTT - sumT * sumT);
+      var b = (sumR - a * sumT) / n;
+
+      // Draw the regression line across full time range
+      var t0 = 0, t1 = maxT;
+      var r0 = Math.max(0, a * t0 + b), r1 = Math.max(0, a * t1 + b);
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(250,204,21,0.7)';
+      ctx.lineWidth = 2.5;
+      ctx.moveTo(xPos(t0), yPos(r0));
+      ctx.lineTo(xPos(t1), yPos(r1));
+      ctx.stroke();
+
+      // Label at the end
+      ctx.fillStyle = '#facc15'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'right';
+      var slopePerH = a * 3600;
+      var slopeStr = (slopePerH >= 0 ? '+' : '') + slopePerH.toFixed(0) + '/s/h';
+      ctx.fillText(Math.round(r1) + '/s (' + slopeStr + ')', pad.l + cw - 4, yPos(r1) - 6);
+
+      // Summary
+      var globalAvg = sumR / n;
+      var etaEl = document.getElementById('perf-eta');
+      etaEl.innerHTML = 'Débit instantané moyen: <span style="color:var(--accent);">' +
+        Math.round(globalAvg).toLocaleString('en-US') + ' grilles/s</span> par worker — ' +
+        'tendance: <span style="color:#facc15;">' + slopeStr + '</span>';
+    }
+  }
+
+  // X axis labels
+  document.getElementById('perf-x-start').textContent = '0h';
+  document.getElementById('perf-x-end').textContent = (maxT / 3600).toFixed(1) + 'h';
+}
+
+// --- Init ---
+setInterval(pollStatus, 1000);
+setInterval(pollLogs, 2000);
+pollStatus(); loadTask3Target(); loadTask10(); loadTask11Catalog(); loadTask12(); loadTask13();
+</script>
+<div id="live-footer"><span class="dot idle" id="footer-dot"></span><span id="footer-text">Idle</span></div>
+</body>
+</html>
