@@ -1,0 +1,44 @@
+{
+  "description": "Rot180-only mates (partitioned merge)",
+  "n_mates_breaking": 402479717,
+  "n_mates_total": 3622317453,
+  "is_exact": false,
+  "n_sample": 1600000,
+  "n_partitions_done": 0,
+  "partition_results": {
+    "1": {
+      "n_breaking": 50893063,
+      "is_exact": false
+    },
+    "2": {
+      "n_breaking": 51167074,
+      "is_exact": false
+    },
+    "3": {
+      "n_breaking": 49775297,
+      "is_exact": false
+    },
+    "4": {
+      "n_breaking": 51431563,
+      "is_exact": false
+    },
+    "5": {
+      "n_breaking": 50786077,
+      "is_exact": false
+    },
+    "6": {
+      "n_breaking": 49055272,
+      "is_exact": false
+    },
+    "7": {
+      "n_breaking": 49081565,
+      "is_exact": false
+    },
+    "8": {
+      "n_breaking": 50289806,
+      "is_exact": false
+    }
+  },
+  "elapsed_max": 86424.8,
+  "timestamp": "2026-02-23T21:34:13.661894"
+}
