@@ -1,0 +1,2 @@
+[worker_gen] task=task13, worker=3, probe=s162o3
+[worker_gen] DONE: {'status': 'done', 'n_found': 20995200, 'n_breaking': 2332800, 'n_target': 0, 'partition': 2, 'sub': 'a', 'probe_type': 's162o3', 'n_sample': 50000, 'elapsed': 1058.9}
